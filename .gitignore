@@ -1,0 +1,28 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Build artifacts
+out/
+build/
+bin/
+lib/
+
+# OMNeT++ / simulation outputs
+results/
+*.vec
+*.vci
+*.sca
+*.elog
+*.log
+
+# Generated files
+*.oppfeaturestate
+*.d
+*.o
+*.so
+Makefile.inc
