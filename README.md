@@ -5,19 +5,20 @@
 This package implements the 3GPP Release 16 5G-TSN integration bridge model
 (TS 23.501 §5.28) for the OMNeT++ / INET / Simu5G simulation stack. The 5G
 system acts as a transparent IEEE 802.1AS-compliant bridge between two TSN
-network segments.
+network segments, with full QoS mapping between TSN PCP and 5G QFI/DRB.
 
-**Stack:** OMNeT++ 6.3 · INET 4.6.x · Simu5G v1.4.3
+**Stack:** OMNeT++ 6.3 · INET 4.6.x · Simu5G v1.4.1-sdap-2 (SDAP branch, UCC)
 
 **End-to-end path:**
 ```
 TSN Device A → TsnSwitch → NW-TT → UPF → gNB ~~NR~~ UE → DS-TT → TSN Device B
 ```
 
-**Validated results (10s simulation, 1ms CBR traffic):**
-- Data delivery: 9990/9992 packets (99.98%)
+**Validated results (10s simulation):**
+- Data delivery: 9997 packets (high priority, 1ms CBR) + 4933 packets (best effort)
 - gPTP frames transported: 158 (via L2-in-GTP-U through actual 5GS)
 - 5GS residence time: ~2.5ms (measured, reported in gPTP correctionField)
+- QoS: PCP=6 → DSCP=6 → QFI=6 → DRB 1 (differentiated scheduling)
 
 ---
 
@@ -28,7 +29,7 @@ TSN Device A → TsnSwitch → NW-TT → UPF → gNB ~~NR~~ UE → DS-TT → TSN
 | G1  | NW-TT and DS-TT bridge port modules | ✅ Complete |
 | G2  | gPTP tunnel transport (sideband + L2-in-GTP-U) | ✅ Complete |
 | G3  | Residence time correction (transparent clock) | ✅ Complete |
-| G4  | QoS mapping (PCP ↔ 5QI) | Pending |
+| G4  | QoS mapping (PCP ↔ 5QI) with SDAP DRB selection | ✅ Complete |
 | G5  | TSN AF / CNC configuration stub | Pending |
 | G7  | Digital twin export hooks | Pending |
 
@@ -41,7 +42,7 @@ TSN Device A → TsnSwitch → NW-TT → UPF → gNB ~~NR~~ UE → DS-TT → TSN
 ```
 src/nodes/NwTt/                          NW-TT (Network-side TSN Translator)
 ├── NwTt.ned                             Compound module (extends NetworkLayerNodeBase)
-├── NwTtTranslator.ned                   Simple module (L2↔IP translation)
+├── NwTtTranslator.ned                   Simple module (L2↔IP translation + QoS mapping)
 ├── NwTtTranslator.h                     C++ header
 ├── NwTtTranslator.cc                    C++ implementation
 ├── GptpSideband.ned                     gPTP sideband delay module (fallback)
@@ -51,12 +52,13 @@ src/nodes/NwTt/                          NW-TT (Network-side TSN Translator)
 
 src/nodes/DsTt/                          DS-TT (Device-side TSN Translator)
 ├── DsTt.ned                             Compound module (two-port L2 bridge)
-├── DsTtTranslator.ned                   Simple module (L2 forwarder + gPTP handler)
+├── DsTtTranslator.ned                   Simple module (L2 forwarder + gPTP + QoS)
 ├── DsTtTranslator.h                     C++ header
 └── DsTtTranslator.cc                    C++ implementation
 
-src/nodes/NR/
-└── NRUeDsTt.ned                         NR UE with Ethernet port for DS-TT (NED only)
+src/nodes/NR/                            UE variants with Ethernet port
+├── NRUeDsTt.ned                         NR UE with Ethernet port (NED only, extends NRUe)
+└── NRUeDsTtDrb.ned                      NR UE DRB with Ethernet port (NED only, extends NRUeDrb)
 ```
 
 ### Simulations (`simulations/NR/`)
@@ -76,6 +78,11 @@ simulations/NR/gptp_bridge_test/         Full bridge with gPTP (L2-in-GTP-U + G3
 ├── GptpBridgeTestNetwork.ned            Topology: adds GptpSideband + gPTP config
 ├── omnetpp.ini                          Configuration (gPTP + residence time)
 └── gptp_bridge_ip_config.xml            IP addressing
+
+simulations/NR/qos_bridge_test/          Full bridge with QoS mapping (G4)
+├── QosBridgeTestNetwork.ned             Topology: gNodeBSdap + NRUeDsTtDrb + VLAN
+├── omnetpp.ini                          Configuration (SDAP + DRB + multi-class)
+└── qos_bridge_ip_config.xml             IP addressing
 ```
 
 ---
@@ -97,8 +104,9 @@ TSN Switch ◄──► EthernetInterface (ethIf)      │
             │        │                         │
             │        ▼                         │
             │  NwTtTranslator                  │
-            │   ├─ Data: strip Eth, forward    │
-            │   │  IPv4 directly to pppIf      │
+            │   ├─ Data: strip Eth + VLAN,     │
+            │   │  read PCP, set DSCP,         │
+            │   │  forward IPv4 to pppIf       │
             │   │  via nl dispatcher           │
             │   └─ gPTP: detect 0x88F7,        │
             │      wrap in UDP:30001,           │
@@ -120,6 +128,7 @@ TSN Switch ◄──► EthernetInterface (ethIf)      │
 - Data path bypasses NW-TT's own IPv4 stack (avoids double encapsulation)
   using `InterfaceReq` tag to route directly to `pppIf`
 - gPTP frames detected by ethertype check before MAC header stripping
+- VLAN tags (802.1Q) stripped at ingress, PCP read and mapped to IPv4 DSCP
 - Registers downstream TSN device IPs with Simu5G binder for GTP routing
 
 ### DS-TT (Device-side TSN Translator)
@@ -138,7 +147,8 @@ UE ◄──► EthernetInterface (ueEth)   │   (promiscuous mode)
     │        ▼                       │
     │  DsTtTranslator                │
     │   ├─ Data: strip Eth from UE,  │
-    │   │  rebuild Eth frame,        │
+    │   │  read DSCP, map to PCP,    │
+    │   │  rebuild Eth frame + VLAN, │
     │   │  send to tsnEth            │
     │   └─ gPTP: detect UDP:30001,   │
     │      strip IP+UDP,             │
@@ -158,10 +168,11 @@ UE ◄──► EthernetInterface (ueEth)   │   (promiscuous mode)
 - `tsnEth` is plain `EthernetInterface` (matches non-streaming receivers)
 - Builds complete Ethernet frames (MAC header + FCS) for `tsnEth` output
 - Reads `GptpResidenceHeader` from L2-in-GTP-U payload for residence time
+- Maps DSCP back to PCP via `UserPriorityReq` tag on outgoing frames
 
-### NRUeDsTt (UE with Ethernet port)
+### NRUeDsTt / NRUeDsTtDrb (UE with Ethernet port)
 
-**Module:** `NRUeDsTt extends NRUe` (NED only, no C++)
+**Module:** `NRUeDsTt extends NRUe` / `NRUeDsTtDrb extends NRUeDrb` (NED only, no C++)
 
 Adds an Ethernet interface to the standard NR UE for connecting to the DS-TT:
 - Sets `numEthInterfaces = 1`
@@ -169,6 +180,7 @@ Adds an Ethernet interface to the standard NR UE for connecting to the DS-TT:
 - Activates `EthernetEncapsulation` for protocol handling
 - Exposes `ethg` gate for external connection
 - Requires `*.ue[0].ipv4.forwarding = true` in .ini
+- `NRUeDsTtDrb` variant adds multi-DRB SDAP support for QoS differentiation
 
 ### gPTP Transport Modes
 
@@ -198,6 +210,27 @@ the gPTP frame payload:
 ```
 [IPv4 | UDP:30001 | GptpResidenceHeader(8B) | original gPTP Ethernet frame]
 ```
+
+### QoS Mapping Pipeline (G4)
+
+The NW-TT and DS-TT implement PCP ↔ 5QI/QFI translation that integrates with
+Simu5G's SDAP layer for per-flow DRB selection:
+
+```
+TSN Device A (PCP=6 in VLAN tag)
+  → NW-TT: strips 802.1Q VLAN tag, reads PCP=6, sets IPv4 DSCP=6
+  → UPF TrafficFlowFilter: reads DSCP=6, sets QFI=6 in TftControlInfo
+  → GtpUser: carries QFI=6 in GTP-U PDU Session Container
+  → gNB SDAP: reads QfiReq(6), selects DRB per drbConfig (e.g., DRB 1)
+  → MAC scheduler: schedules DRB 1 with configured priority
+  → UE SDAP: extracts QFI=6 from SDAP header, sets QfiInd
+  → UE IPv4: routes to eth[0] (toward DS-TT)
+  → DS-TT: reads IPv4 DSCP=6, maps to PCP=6 via UserPriorityReq tag
+  → TSN Device B receives with original priority
+```
+
+No Simu5G core modifications are needed — the SDAP pipeline reads DSCP/QFI
+automatically from existing fields.
 
 ---
 
@@ -232,8 +265,10 @@ simtime-resolution = fs
 *.dsTt.tsnEth.mac.promiscuous = true
 *.dsTt.translator.gptpEncapUdpPort = 30001
 
-# UE (NRUeDsTt)
-*.ue[0].nrServingNodeId = 1
+# UE (NRUeDsTt or NRUeDsTtDrb)
+*.ue[0].masterId = 0
+*.ue[0].nrMacCellId = 1
+*.ue[0].nrMasterId = 1
 *.ue[0].ipv4.forwarding = true
 
 # Ethernet bitrates
@@ -267,6 +302,51 @@ simtime-resolution = fs
 *.tsnSwitch.clock.oscillator.nominalTickLength = 10ns
 ```
 
+### QoS / SDAP configuration (G4)
+
+```ini
+# SDAP-aware node types
+# Use gNodeBSdap for gNB and NRUeDsTtDrb for UE in QosBridgeTestNetwork.ned
+
+# SDAP DRB configuration
+# gNB side: specify UE nodeId (2049 for NR UE)
+*.gnb.cellularNic.sdap.drbConfig = [{drb: 0, ue: 2049, qfiList: [0]}, \
+                                     {drb: 1, ue: 2049, qfiList: [6]}]
+
+# UE side: no "ue" field needed (self)
+*.ue[0].cellularNic.sdap.drbConfig = [{drb: 0, qfiList: [0]}, \
+                                       {drb: 1, qfiList: [6]}]
+
+# TSN Device A: enable VLAN tagging with stream identification
+*.tsnDeviceA.hasOutgoingStreams = true
+*.tsnDeviceA.bridging.streamIdentifier.identifier.mapping = [ \
+    {packetFilter: "*-0", stream: "high"}, \
+    {packetFilter: "*-1", stream: "low"}]
+*.tsnDeviceA.bridging.streamCoder.encoder.mapping = [ \
+    {stream: "high", vlan: 100, pcp: 6}, \
+    {stream: "low", vlan: 200, pcp: 0}]
+
+# Two traffic classes
+*.tsnDeviceA.numApps = 2
+*.tsnDeviceA.app[0].typename = "UdpBasicApp"
+*.tsnDeviceA.app[0].destAddresses = "tsnDeviceB"
+*.tsnDeviceA.app[0].destPort = 5000
+*.tsnDeviceA.app[0].messageLength = 100B
+*.tsnDeviceA.app[0].sendInterval = 1ms
+
+*.tsnDeviceA.app[1].typename = "UdpBasicApp"
+*.tsnDeviceA.app[1].destAddresses = "tsnDeviceB"
+*.tsnDeviceA.app[1].destPort = 5001
+*.tsnDeviceA.app[1].messageLength = 500B
+*.tsnDeviceA.app[1].sendInterval = exponential(2ms)
+
+*.tsnDeviceB.numApps = 2
+*.tsnDeviceB.app[0].typename = "UdpSink"
+*.tsnDeviceB.app[0].localPort = 5000
+*.tsnDeviceB.app[1].typename = "UdpSink"
+*.tsnDeviceB.app[1].localPort = 5001
+```
+
 ### IP addressing scheme
 
 ```
@@ -281,17 +361,36 @@ DS-TT interfaces get `0.0.0.0` (L2 bridge, no IP needed).
 
 ---
 
+## Version Compatibility
+
+This project has been tested on two Simu5G versions:
+
+| Version | Node IDs | UE Config | SDAP Support |
+|---------|----------|-----------|--------------|
+| v1.4.3 | `nrServingNodeId` | `*.ue[0].nrServingNodeId = 1` | Not available |
+| v1.4.1-sdap-2 | `masterId` + `nrMasterId` | `*.ue[0].masterId = 0` / `*.ue[0].nrMacCellId = 1` / `*.ue[0].nrMasterId = 1` | Full SDAP/DRB |
+
+**Key differences:**
+- v1.4.3 uses `registerNode(nodeId, module, type, isNr)` — caller provides nodeId
+- v1.4.1-sdap-2 uses `registerNode(module, type, masterId, isNr)` — binder assigns nodeId
+- NR UE nodeIds start at 2049 (`NR_UE_MIN_ID`); LTE UE nodeIds start at 1025 (`UE_MIN_ID`)
+- Binder registration for downstream TSN device IPs uses lazy init (first packet)
+  to ensure UE is fully registered before lookup
+- gNB SDAP `drbConfig` requires explicit `ue: <nodeId>` field for per-UE DRB mapping
+
+---
+
 ## Build Instructions
 
 ### Prerequisites
 - OMNeT++ 6.3 installed and in PATH
 - INET 4.6.x built
-- Simu5G v1.4.3 built
+- Simu5G v1.4.1-sdap-2 built (for G4 QoS features)
 
 ### Integration
 
 1. Copy all files from `src/nodes/NwTt/`, `src/nodes/DsTt/`, and
-   `src/nodes/NR/NRUeDsTt.ned` into your Simu5G source tree.
+   `src/nodes/NR/` into your Simu5G source tree.
 
 2. Copy simulation directories from `simulations/NR/` into your
    Simu5G simulations tree.
@@ -304,8 +403,15 @@ DS-TT interfaces get `0.0.0.0` (L2 bridge, no IP needed).
 
 4. Run:
    ```bash
+   # Basic bridge test
    cd <simu5g>/simulations/NR/gptp_bridge_test
    opp_run -u Qtenv -c GptpBridgeTest -f omnetpp.ini \
+     -n ".:../../src:<inet>/src" \
+     -l ../../src/simu5g -l <inet>/src/INET
+
+   # QoS bridge test (requires v1.4.1-sdap-2)
+   cd <simu5g>/simulations/NR/qos_bridge_test
+   opp_run -u Qtenv -c QosBridgeTest -f omnetpp.ini \
      -n ".:../../src:<inet>/src" \
      -l ../../src/simu5g -l <inet>/src/INET
    ```
@@ -335,21 +441,16 @@ DS-TT interfaces get `0.0.0.0` (L2 bridge, no IP needed).
    may fail for some gPTP message types if chunk casting doesn't work.
    Should handle GptpSync, GptpFollowUp, PdelayReq/Resp separately.
 
-7. **No VLAN tag preservation** across the bridge. PCP values are lost
-   at the NW-TT when Ethernet headers are stripped.
-
-8. **Single UE/DS-TT topology only.** Multi-UE requires array parameters
+7. **Single UE/DS-TT topology only.** Multi-UE requires array parameters
    for binder registration and per-UE DS-TT instances.
+
+8. **gNB SDAP nodeId resolution** for `192.168.1.2` may log a warning
+   (`Cannot resolve dest UE nodeId`). The SDAP falls back to DRB 0
+   but still correctly reads QFI from the GTP-U header for DRB selection.
 
 ---
 
-## Remaining Work (G4, G5, G7)
-
-### G4: QoS Mapping (PCP ↔ 5QI) — estimated 2 weeks
-- Map TSN PCP to 5QI/QFI at NW-TT, reverse at DS-TT
-- Integrate with SDAP branch QFI-aware scheduling
-- Multi-DRB configuration for traffic class differentiation
-- Requires VLAN tag preservation (currently stripped)
+## Remaining Work (G5, G7)
 
 ### G5: TSN AF Stub — estimated 1.5 weeks
 - Static configuration module exposing bridge parameters
@@ -364,6 +465,25 @@ DS-TT interfaces get `0.0.0.0` (L2 bridge, no IP needed).
 
 ---
 
+## Scaling to Multiple Endpoints
+
+The architecture scales naturally to multiple UE/DS-TT pairs:
+
+```
+TSN Device A ─┐
+TSN Device C ─┤── TsnSwitch ── NW-TT ── UPF ── gNB ~~NR~~ UE[0] ── DS-TT[0] ── TSN Device B
+TSN Device D ─┘                                    ~~NR~~ UE[1] ── DS-TT[1] ── TSN Device E
+                                                   ~~NR~~ UE[2] ── DS-TT[2] ── TSN Device F
+```
+
+**What stays the same:** NW-TT code, DS-TT code, GptpSideband/L2-in-GTP-U logic.
+
+**What needs replication:** Each TSN Device B needs its own UE + DS-TT pair.
+NW-TT binder registration needs a list parameter. Per-UE DRB config in SDAP.
+Main complexity is in Simu5G MAC scheduler (multi-UE resource competition).
+
+---
+
 ## References
 
 - 3GPP TS 23.501 §5.28 — 5G-TSN integration architecture
@@ -372,3 +492,4 @@ DS-TT interfaces get `0.0.0.0` (L2 bridge, no IP needed).
 - 3GPP TS 29.281 §5.2.1 — GTP-U PDU Session Container
 - IEEE 802.1AS-2020 — Timing and Synchronization for TSN
 - IEEE 802.1AS-2020 §11.2.14.2.3 — Transparent clock correction
+- IEEE 802.1Q — VLAN tagging and Priority Code Point (PCP)

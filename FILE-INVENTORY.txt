@@ -1,8 +1,7 @@
-# File Inventory — 5G-TSN Bridge for Simu5G
+# File Inventory — 5G-TSN Bridge (nascTime) for Simu5G
 #
 # Copy these into your Simu5G source tree as shown below.
 # Files marked [NEW] are created by this project.
-# Files marked [EXISTING] are not modified.
 #
 # After copying, rebuild Simu5G: cd src && make -j$(nproc)
 
@@ -12,42 +11,48 @@
 
 # NW-TT (Network-side TSN Translator)
 src/nodes/NwTt/NwTt.ned                    [NEW] Compound module, extends NetworkLayerNodeBase
-src/nodes/NwTt/NwTtTranslator.ned           [NEW] Simple module, L2↔IP translator
+src/nodes/NwTt/NwTtTranslator.ned           [NEW] Simple module, L2↔IP translator + QoS mapping
 src/nodes/NwTt/NwTtTranslator.h             [NEW] C++ header
-src/nodes/NwTt/NwTtTranslator.cc            [NEW] C++ implementation
-src/nodes/NwTt/GptpSideband.ned             [NEW] gPTP sideband delay module
+src/nodes/NwTt/NwTtTranslator.cc            [NEW] C++ implementation (PCP→DSCP, gPTP intercept, binder reg)
+src/nodes/NwTt/GptpSideband.ned             [NEW] gPTP sideband delay module (fallback mode)
 src/nodes/NwTt/GptpSideband.h               [NEW] C++ header
 src/nodes/NwTt/GptpSideband.cc              [NEW] C++ implementation
-src/nodes/NwTt/GptpResidenceHeader.msg      [NEW] Residence time header (auto-compiled)
+src/nodes/NwTt/GptpResidenceHeader.msg      [NEW] Residence time header (auto-compiled by opp_msgtool)
 
 # DS-TT (Device-side TSN Translator)
 src/nodes/DsTt/DsTt.ned                     [NEW] Compound module, two-port L2 bridge
-src/nodes/DsTt/DsTtTranslator.ned           [NEW] Simple module, L2 forwarder + gPTP handler
+src/nodes/DsTt/DsTtTranslator.ned           [NEW] Simple module, L2 forwarder + gPTP handler + QoS
 src/nodes/DsTt/DsTtTranslator.h             [NEW] C++ header
-src/nodes/DsTt/DsTtTranslator.cc            [NEW] C++ implementation
+src/nodes/DsTt/DsTtTranslator.cc            [NEW] C++ implementation (DSCP→PCP, gPTP unwrap, residence time)
 
-# UE variant with Ethernet port
-src/nodes/NR/NRUeDsTt.ned                   [NEW] NED only, extends NRUe
+# UE variants with Ethernet port
+src/nodes/NR/NRUeDsTt.ned                   [NEW] NED only, extends NRUe (basic, no SDAP)
+src/nodes/NR/NRUeDsTtDrb.ned                [NEW] NED only, extends NRUeDrb (multi-DRB SDAP support)
 
 # ============================================================================
 # SIMULATIONS
 # ============================================================================
 
-# Test 1: NW-TT only (baseline)
+# Test 1: NW-TT only (baseline — G1)
 simulations/NR/nwtt_test/NwTtTestNetwork.ned
 simulations/NR/nwtt_test/omnetpp.ini
 simulations/NR/nwtt_test/nwtt_ip_config.xml
 
-# Test 2: Full bridge without gPTP
+# Test 2: Full bridge without gPTP (G1)
 simulations/NR/bridge_test/BridgeTestNetwork.ned
 simulations/NR/bridge_test/omnetpp.ini
 simulations/NR/bridge_test/bridge_ip_config.xml
 
-# Test 3: Full bridge with gPTP + residence time correction
+# Test 3: Full bridge with gPTP + residence time correction (G2 + G3)
 simulations/NR/gptp_bridge_test/GptpBridgeTestNetwork.ned
 simulations/NR/gptp_bridge_test/omnetpp.ini
 simulations/NR/gptp_bridge_test/gptp_bridge_ip_config.xml
 
+# Test 4: Full bridge with QoS mapping + SDAP DRB selection (G4)
+simulations/NR/qos_bridge_test/QosBridgeTestNetwork.ned
+simulations/NR/qos_bridge_test/omnetpp.ini
+simulations/NR/qos_bridge_test/qos_bridge_ip_config.xml
+
 # ============================================================================
-# TOTAL: 13 new source files + 9 simulation files = 22 files
+# TOTAL: 14 new source files + 12 simulation files = 26 files
 # ============================================================================
