@@ -5,7 +5,8 @@
 This package implements the 3GPP Release 16 5G-TSN integration bridge model
 (TS 23.501 §5.28) for the OMNeT++ / INET / Simu5G simulation stack. The 5G
 system acts as a transparent IEEE 802.1AS-compliant bridge between two TSN
-network segments, with full QoS mapping between TSN PCP and 5G QFI/DRB.
+network segments, with full QoS mapping between TSN PCP and 5G QFI/DRB,
+CNC-style configuration, and static BMCA clock hierarchy management.
 
 **Stack:** OMNeT++ 6.3 · INET 4.6.x · Simu5G v1.4.1-sdap-2 (SDAP branch, UCC)
 
@@ -15,10 +16,12 @@ TSN Device A → TsnSwitch → NW-TT → UPF → gNB ~~NR~~ UE → DS-TT → TSN
 ```
 
 **Validated results (10s simulation):**
-- Data delivery: 9997 packets (high priority, 1ms CBR) + 4933 packets (best effort)
+- Data delivery: 9990 packets (high priority, 1ms CBR) + 5030 packets (best effort)
 - gPTP frames transported: 158 (via L2-in-GTP-U through actual 5GS)
-- 5GS residence time: ~2.5ms (measured, reported in gPTP correctionField)
+- 5GS residence time: min=2499.756µs, max=2499.948µs, avg=2499.852µs
 - QoS: PCP=6 → DSCP=6 → QFI=6 → DRB 1 (differentiated scheduling)
+- TSN AF: live bridge delay tracking, CNC stream reservations, QoS violation detection
+- Static BMCA: validated clock hierarchy with 5GS as transparent clock
 
 ---
 
@@ -30,7 +33,8 @@ TSN Device A → TsnSwitch → NW-TT → UPF → gNB ~~NR~~ UE → DS-TT → TSN
 | G2  | gPTP tunnel transport (sideband + L2-in-GTP-U) | ✅ Complete |
 | G3  | Residence time correction (transparent clock) | ✅ Complete |
 | G4  | QoS mapping (PCP ↔ 5QI) with SDAP DRB selection | ✅ Complete |
-| G5  | TSN AF / CNC configuration stub | Pending |
+| G5  | TSN AF / CNC configuration | ✅ Complete |
+| G6  | Static BMCA (clock hierarchy management) | ✅ Complete |
 | G7  | Digital twin export hooks | Pending |
 
 ---
@@ -59,30 +63,39 @@ src/nodes/DsTt/                          DS-TT (Device-side TSN Translator)
 src/nodes/NR/                            UE variants with Ethernet port
 ├── NRUeDsTt.ned                         NR UE with Ethernet port (NED only, extends NRUe)
 └── NRUeDsTtDrb.ned                      NR UE DRB with Ethernet port (NED only, extends NRUeDrb)
+
+src/nodes/TsnAf/                         TSN Application Function + BMCA
+├── TsnAf.ned                            TSN AF module (bridge capabilities + CNC config)
+├── TsnAf.h                              C++ header
+├── TsnAf.cc                             C++ implementation
+├── StaticBmca.ned                       Static BMCA stub (clock hierarchy)
+├── StaticBmca.h                         C++ header
+└── StaticBmca.cc                        C++ implementation
 ```
 
 ### Simulations (`simulations/NR/`)
 
 ```
-simulations/NR/nwtt_test/                NW-TT only baseline
-├── NwTtTestNetwork.ned                  Topology: TsnDevice → NwTt → UPF → gNB → UE
-├── omnetpp.ini                          Configuration
-└── nwtt_ip_config.xml                   IP addressing
+simulations/NR/nwtt_test/                NW-TT only baseline (G1)
+├── NwTtTestNetwork.ned
+├── omnetpp.ini
+└── nwtt_ip_config.xml
 
-simulations/NR/bridge_test/              Full bridge without gPTP
-├── BridgeTestNetwork.ned                Topology: adds DS-TT + TsnDeviceB
-├── omnetpp.ini                          Configuration
-└── bridge_ip_config.xml                 IP addressing
+simulations/NR/bridge_test/              Full bridge without gPTP (G1)
+├── BridgeTestNetwork.ned
+├── omnetpp.ini
+└── bridge_ip_config.xml
 
-simulations/NR/gptp_bridge_test/         Full bridge with gPTP (L2-in-GTP-U + G3)
-├── GptpBridgeTestNetwork.ned            Topology: adds GptpSideband + gPTP config
-├── omnetpp.ini                          Configuration (gPTP + residence time)
-└── gptp_bridge_ip_config.xml            IP addressing
+simulations/NR/gptp_bridge_test/         Full bridge with gPTP + residence time (G2 + G3)
+├── GptpBridgeTestNetwork.ned
+├── omnetpp.ini
+└── gptp_bridge_ip_config.xml
 
-simulations/NR/qos_bridge_test/          Full bridge with QoS mapping (G4)
-├── QosBridgeTestNetwork.ned             Topology: gNodeBSdap + NRUeDsTtDrb + VLAN
-├── omnetpp.ini                          Configuration (SDAP + DRB + multi-class)
-└── qos_bridge_ip_config.xml             IP addressing
+simulations/NR/qos_bridge_test/          Full bridge with QoS + TSN AF + BMCA (G4 + G5 + G6)
+├── QosBridgeTestNetwork.ned
+├── omnetpp.ini
+├── qos_bridge_ip_config.xml
+└── cnc_config.xml                       CNC stream reservations + TAS gate control
 ```
 
 ---
@@ -115,9 +128,6 @@ TSN Switch ◄──► EthernetInterface (ethIf)      │
             │        │                         │
             │        ▼                         │
             │  PppInterface (pppIf) ──────────►│◄──► UPF.filterGate
-            │                                  │
-            │  (also: UDP, IPv4, MessageDispatchers │
-            │   from NetworkLayerNodeBase)      │
             └──────────────────────────────────┘
 ```
 
@@ -181,6 +191,30 @@ Adds an Ethernet interface to the standard NR UE for connecting to the DS-TT:
 - Exposes `ethg` gate for external connection
 - Requires `*.ue[0].ipv4.forwarding = true` in .ini
 - `NRUeDsTtDrb` variant adds multi-DRB SDAP support for QoS differentiation
+
+### TSN AF (Application Function)
+
+**Module:** `TsnAf` (3GPP TS 23.501 §5.28.2)
+
+The control plane interface between the TSN CNC and the 5GS bridge:
+- Subscribes to DS-TT's `residenceTime` signal for live bridge delay tracking
+- Publishes delay min/max/avg as mutable NED parameters (queryable at runtime)
+- Reads CNC configuration from XML (stream reservations + TAS gate control lists)
+- Detects QoS violations when bridge delay exceeds stream's `maxLatencyMs`
+- Provides API: `getQfiForPcp()`, `getPcpForQfi()`, `getBridgeDelayAvg()`
+- Emits signals for monitoring and G7 integration
+
+### Static BMCA (Best Master Clock Algorithm)
+
+**Module:** `StaticBmca` (IEEE 802.1AS-2020 §10.3 — static implementation)
+
+Manages the gPTP clock hierarchy for the simulation:
+- Reads spanning tree configuration from `.ini` (JSON array of node roles)
+- Validates topology: single grandmaster, no missing roles, no loops
+- Registers the 5GS bridge as a transparent clock (IEEE 802.1AS §10.2.2.3)
+- Verifies correctionField support is enabled for transparent clocks
+- Provides API: `getGrandmasterInfo()`, `getNodeRole()`, `isTransparentClock()`
+- Emits validation error signals for topology misconfigurations
 
 ### gPTP Transport Modes
 
@@ -305,9 +339,6 @@ simtime-resolution = fs
 ### QoS / SDAP configuration (G4)
 
 ```ini
-# SDAP-aware node types
-# Use gNodeBSdap for gNB and NRUeDsTtDrb for UE in QosBridgeTestNetwork.ned
-
 # SDAP DRB configuration
 # gNB side: specify UE nodeId (2049 for NR UE)
 *.gnb.cellularNic.sdap.drbConfig = [{drb: 0, ue: 2049, qfiList: [0]}, \
@@ -347,6 +378,47 @@ simtime-resolution = fs
 *.tsnDeviceB.app[1].localPort = 5001
 ```
 
+### TSN AF configuration (G5)
+
+```ini
+*.tsnAf.portSpeedBps = 1Gbps
+*.tsnAf.numTrafficClasses = 8
+*.tsnAf.pcpToQfiMap = "0,1,2,3,4,5,6,7"
+*.tsnAf.nwTtModule = "nwTt"
+*.tsnAf.dsTtModule = "dsTt"
+*.tsnAf.gnbModule = "gnb"
+*.tsnAf.cncConfig = xmldoc("cnc_config.xml")
+```
+
+### Static BMCA configuration (G6)
+
+```ini
+*.staticBmca.grandmasterModule = "tsnDeviceA"
+*.staticBmca.grandmasterPriority1 = 246
+*.staticBmca.clockClass = 248
+*.staticBmca.transparentClockEnabled = true
+*.staticBmca.correctionFieldSupport = true
+*.staticBmca.spanningTree = [ \
+    {node: "tsnDeviceA", role: "MASTER", masterPorts: ["eth0"], slavePort: ""}, \
+    {node: "tsnSwitch", role: "BRIDGE", masterPorts: ["eth1"], slavePort: "eth0"}, \
+    {node: "tsnDeviceB", role: "SLAVE", masterPorts: [], slavePort: "eth0"}]
+```
+
+### CNC configuration file (cnc_config.xml)
+
+```xml
+<cncConfig>
+    <streams>
+        <stream id="1" pcp="6" drb="1" maxLatencyMs="5.0" bandwidthKbps="800"/>
+        <stream id="2" pcp="0" drb="0" maxLatencyMs="50.0" bandwidthKbps="2000"/>
+    </streams>
+    <gateControlList cycleTime="1ms">
+        <entry start="0us"   duration="500us" gates="255"/>
+        <entry start="500us" duration="500us" gates="64"/>
+    </gateControlList>
+</cncConfig>
+```
+
 ### IP addressing scheme
 
 ```
@@ -374,8 +446,8 @@ This project has been tested on two Simu5G versions:
 - v1.4.3 uses `registerNode(nodeId, module, type, isNr)` — caller provides nodeId
 - v1.4.1-sdap-2 uses `registerNode(module, type, masterId, isNr)` — binder assigns nodeId
 - NR UE nodeIds start at 2049 (`NR_UE_MIN_ID`); LTE UE nodeIds start at 1025 (`UE_MIN_ID`)
-- Binder registration for downstream TSN device IPs uses lazy init (first packet)
-  to ensure UE is fully registered before lookup
+- Binder registration for downstream TSN device IPs reads UE macNodeId directly
+  from the UE module parameter
 - gNB SDAP `drbConfig` requires explicit `ue: <nodeId>` field for per-UE DRB mapping
 
 ---
@@ -385,12 +457,12 @@ This project has been tested on two Simu5G versions:
 ### Prerequisites
 - OMNeT++ 6.3 installed and in PATH
 - INET 4.6.x built
-- Simu5G v1.4.1-sdap-2 built (for G4 QoS features)
+- Simu5G v1.4.1-sdap-2 built (for G4-G6 features)
 
 ### Integration
 
-1. Copy all files from `src/nodes/NwTt/`, `src/nodes/DsTt/`, and
-   `src/nodes/NR/` into your Simu5G source tree.
+1. Copy all files from `src/nodes/NwTt/`, `src/nodes/DsTt/`, `src/nodes/NR/`,
+   and `src/nodes/TsnAf/` into your Simu5G source tree.
 
 2. Copy simulation directories from `simulations/NR/` into your
    Simu5G simulations tree.
@@ -403,13 +475,7 @@ This project has been tested on two Simu5G versions:
 
 4. Run:
    ```bash
-   # Basic bridge test
-   cd <simu5g>/simulations/NR/gptp_bridge_test
-   opp_run -u Qtenv -c GptpBridgeTest -f omnetpp.ini \
-     -n ".:../../src:<inet>/src" \
-     -l ../../src/simu5g -l <inet>/src/INET
-
-   # QoS bridge test (requires v1.4.1-sdap-2)
+   # Full test with QoS + TSN AF + BMCA
    cd <simu5g>/simulations/NR/qos_bridge_test
    opp_run -u Qtenv -c QosBridgeTest -f omnetpp.ini \
      -n ".:../../src:<inet>/src" \
@@ -444,24 +510,22 @@ This project has been tested on two Simu5G versions:
 7. **Single UE/DS-TT topology only.** Multi-UE requires array parameters
    for binder registration and per-UE DS-TT instances.
 
-8. **gNB SDAP nodeId resolution** for `192.168.1.2` may log a warning
-   (`Cannot resolve dest UE nodeId`). The SDAP falls back to DRB 0
-   but still correctly reads QFI from the GTP-U header for DRB selection.
+8. **TSN AF TAS gate control** is parsed and logged but not programmatically
+   applied to TSN Device A's `Ieee8021qTimeAwareShaper` module.
+
+9. **Static BMCA** validates topology but does not dynamically reconfigure
+   gPTP port roles. INET's `Gptp` module does not support BMCA.
 
 ---
 
-## Remaining Work (G5, G7)
-
-### G5: TSN AF Stub — estimated 1.5 weeks
-- Static configuration module exposing bridge parameters
-- Bridge delay, port speed, supported traffic classes
-- CNC schedule file reader for TAS gate configuration
+## Remaining Work
 
 ### G7: Digital Twin Export — estimated 3 weeks
 - ZeroMQ PUB socket sidecar module
 - InfluxDB line protocol message format
 - Grafana dashboard with live TSN flow latency and gPTP accuracy
 - Alert on threshold breach (e.g., E2E delay > 5ms)
+- Subscribes to TSN AF and BMCA signals for real-time observability
 
 ---
 
@@ -476,10 +540,12 @@ TSN Device D ─┘                                    ~~NR~~ UE[1] ── DS-TT
                                                    ~~NR~~ UE[2] ── DS-TT[2] ── TSN Device F
 ```
 
-**What stays the same:** NW-TT code, DS-TT code, GptpSideband/L2-in-GTP-U logic.
+**What stays the same:** NW-TT code, DS-TT code, GptpSideband/L2-in-GTP-U logic,
+TSN AF, Static BMCA.
 
 **What needs replication:** Each TSN Device B needs its own UE + DS-TT pair.
 NW-TT binder registration needs a list parameter. Per-UE DRB config in SDAP.
+Static BMCA spanning tree config needs additional entries per endpoint.
 Main complexity is in Simu5G MAC scheduler (multi-UE resource competition).
 
 ---
@@ -487,9 +553,12 @@ Main complexity is in Simu5G MAC scheduler (multi-UE resource competition).
 ## References
 
 - 3GPP TS 23.501 §5.28 — 5G-TSN integration architecture
+- 3GPP TS 23.501 §5.28.2 — TSN Application Function (TSN AF)
 - 3GPP TS 23.501 §5.28.3 — NW-TT functionality
 - 3GPP TS 23.501 §5.28.4 — DS-TT functionality
 - 3GPP TS 29.281 §5.2.1 — GTP-U PDU Session Container
 - IEEE 802.1AS-2020 — Timing and Synchronization for TSN
+- IEEE 802.1AS-2020 §10.3 — Best Master Clock Algorithm (BMCA)
 - IEEE 802.1AS-2020 §11.2.14.2.3 — Transparent clock correction
 - IEEE 802.1Q — VLAN tagging and Priority Code Point (PCP)
+- IEEE 802.1Qbv — Time-Aware Shaping (TAS) gate control
