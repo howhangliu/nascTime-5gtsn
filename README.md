@@ -1,3 +1,7 @@
+<p align='center'>
+  <img width="430" height="146" alt="upscaled_logo-removebg-preview" src="https://github.com/user-attachments/assets/76eb2f68-5924-402b-936e-5ec78fc352d0" />
+</p>
+
 # nascTime (5G-TSN Bridge)
 
 ## Overview
