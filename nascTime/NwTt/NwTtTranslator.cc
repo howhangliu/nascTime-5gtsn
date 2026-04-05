@@ -28,6 +28,7 @@
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/linklayer/ieee8021q/Ieee8021qTagHeader_m.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
+#include "inet/common/IProtocolRegistrationListener.h"
 
 Define_Module(NwTtTranslator);
 
@@ -58,6 +59,7 @@ void NwTtTranslator::initialize(int stage)
         ipPacketReceivedSignal = registerSignal("ipPacketReceived");
         packetDroppedSignal    = registerSignal("packetDropped");
         gptpInterceptedSignal  = registerSignal("gptpIntercepted");
+        registerProtocol(Protocol::ethernetMac, gate("ethOut"), gate("ethIn"));
 
         std::string mappedPcps = par("mappedPcpValues").stdstringValue();
         cStringTokenizer tokenizer(mappedPcps.c_str(), ",");
@@ -76,6 +78,15 @@ void NwTtTranslator::initialize(int stage)
         } else {
             throw cRuntimeError("NwTtTranslator: pppIf interface not found");
         }
+        // H5: Manually register ethernetmac service on nl so IPv4 routing
+                // can find encap for the egress path (encap has registerProtocol=false
+                // to avoid conflicts on ethLi)
+                auto *encapMod = getParentModule()->getSubmodule("encap");
+                if (encapMod) {
+                    registerService(Protocol::ethernetMac,
+                                   encapMod->gate("upperLayerIn"),
+                                   encapMod->gate("upperLayerOut"));
+                }
     }
     else if (stage == INITSTAGE_TRANSPORT_LAYER) {
         ueAddr    = L3AddressResolver().resolve(par("ueAddress"));

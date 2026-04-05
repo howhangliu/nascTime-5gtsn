@@ -23,23 +23,20 @@
 
 package simu5g.nodes.nascTime.DsTt;
 
-import inet.linklayer.ethernet.basic.EthernetInterface;
+import inet.common.MessageDispatcher;
+import inet.linklayer.ethernet.modular.LayeredEthernetInterface;
 import inet.networklayer.common.InterfaceTable;
 
 module DsTt
 {
     parameters:
-        @display("i=abstract/switch;bgb=500,300");
+        @display("i=abstract/switch;bgb=500,400");
         @networkNode();
-
         *.interfaceTableModule = default(absPath(".interfaceTable"));
 
     gates:
-        // Facing TSN Device B
         inout tsnEthg @labels(EthernetSignal);
-        // Facing UE's eth[0]
         inout ueEthg @labels(EthernetSignal);
-        // gPTP sideband (connects from GptpSideband module)
         input gptpSidebandIn @loose;
 
     submodules:
@@ -47,22 +44,42 @@ module DsTt
             @display("p=80,50;is=s");
         }
 
-        // Ethernet interface facing TSN device
-        tsnEth: EthernetInterface {
+        tsnEth: LayeredEthernetInterface {
             parameters:
-                @display("p=150,230");
+                bitrate = default(1Gbps);
+                phyLayer.typename = "EthernetStreamingPhyLayer";
+                processingDelayLayer.typename = "OmittedProcessingDelayLayer";
+                trafficConditionerLayer.typename = "OmittedTrafficConditionerLayer";
+                measurementLayer.typename = "OmittedMeasurementLayer";
+                @display("p=350,300");
         }
 
-        // Ethernet interface facing UE
-        ueEth: EthernetInterface {
+        ueEth: LayeredEthernetInterface {
             parameters:
-                @display("p=350,230");
+                bitrate = default(1Gbps);
+                phyLayer.typename = "EthernetPhyLayer";
+                processingDelayLayer.typename = "OmittedProcessingDelayLayer";
+                trafficConditionerLayer.typename = "OmittedTrafficConditionerLayer";
+                measurementLayer.typename = "OmittedMeasurementLayer";
+                @display("p=150,300");
         }
 
-        // The translator (L2 forwarder, with hooks for G2/G3/G4)
         translator: DsTtTranslator {
             parameters:
                 @display("p=250,100");
+        }
+
+        // H5: Dispatchers between LayeredEthernetInterface and translator
+        tsnLi: MessageDispatcher {
+            parameters:
+                @display("p=350,200;b=200,5,,,,1");
+                serviceMapping = {"ethernetmac": "tsnEth"};
+        }
+
+        ueLi: MessageDispatcher {
+            parameters:
+                @display("p=150,200;b=200,5,,,,1");
+                serviceMapping = {"ethernetmac": "ueEth"};
         }
 
     connections:
@@ -70,14 +87,18 @@ module DsTt
         tsnEthg <--> tsnEth.phys;
         ueEthg <--> ueEth.phys;
 
-        // TSN side ↔ translator
-        tsnEth.upperLayerOut --> translator.tsnIn;
-        tsnEth.upperLayerIn <-- translator.tsnOut;
+        // TSN side: tsnEth ↔ tsnLi ↔ translator (ethIf = gate[0], translator = gate[1])
+        tsnEth.upperLayerOut --> tsnLi.in++;
+        tsnEth.upperLayerIn <-- tsnLi.out++;
+        tsnLi.out++ --> translator.tsnIn;
+        tsnLi.in++ <-- translator.tsnOut;
 
-        // UE side ↔ translator
-        ueEth.upperLayerOut --> translator.ueIn;
-        ueEth.upperLayerIn <-- translator.ueOut;
+        // UE side: ueEth ↔ ueLi ↔ translator (ethIf = gate[0], translator = gate[1])
+        ueEth.upperLayerOut --> ueLi.in++;
+        ueEth.upperLayerIn <-- ueLi.out++;
+        ueLi.out++ --> translator.ueIn;
+        ueLi.in++ <-- translator.ueOut;
 
-
-		gptpSidebandIn --> translator.gptpIn;
+        // gPTP sideband
+        gptpSidebandIn --> translator.gptpIn;
 }

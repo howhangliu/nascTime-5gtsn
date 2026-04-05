@@ -10,20 +10,20 @@
 # ============================================================================
 
 # NW-TT (Network-side TSN Translator)
-src/nodes/nascTime/NwTt/NwTt.ned                    Compound module, extends NetworkLayerNodeBase
+src/nodes/nascTime/NwTt/NwTt.ned                    Compound module (LayeredEthernetInterface + ethLi dispatcher)
 src/nodes/nascTime/NwTt/NwTtTranslator.ned           Simple module, L2↔IP + QoS + gPTP replication
 src/nodes/nascTime/NwTt/NwTtTranslator.h             C++ header
-src/nodes/nascTime/NwTt/NwTtTranslator.cc            C++ implementation
+src/nodes/nascTime/NwTt/NwTtTranslator.cc            C++ impl (registerProtocol, manual encap service registration)
 src/nodes/nascTime/NwTt/GptpSideband.ned             gPTP sideband delay module (fallback)
 src/nodes/nascTime/NwTt/GptpSideband.h               C++ header
 src/nodes/nascTime/NwTt/GptpSideband.cc              C++ implementation
 src/nodes/nascTime/NwTt/GptpResidenceHeader.msg      Residence time header (auto-compiled)
 
 # DS-TT (Device-side TSN Translator) + UE variants
-src/nodes/nascTime/DsTt/DsTt.ned                     Compound module, two-port L2 bridge
+src/nodes/nascTime/DsTt/DsTt.ned                     Compound module (LayeredEthernetInterface + tsnLi/ueLi dispatchers)
 src/nodes/nascTime/DsTt/DsTtTranslator.ned           Simple module, L2 forwarder + gPTP + QoS
 src/nodes/nascTime/DsTt/DsTtTranslator.h             C++ header
-src/nodes/nascTime/DsTt/DsTtTranslator.cc            C++ implementation
+src/nodes/nascTime/DsTt/DsTtTranslator.cc            C++ impl (registerProtocol, DispatchProtocolReq, DirectionTag)
 src/nodes/nascTime/DsTt/NRUeDsTt.ned                 NR UE with Ethernet port (extends NRUe)
 src/nodes/nascTime/DsTt/NRUeDsTtDrb.ned              NR UE DRB with Ethernet port (extends NRUeDrb)
 
@@ -74,6 +74,35 @@ simulations/nascTime_tests/multi_endpoint_test/cnc_config.xml
 #   nrPdcp[numDrbs].multiSession: false → default(true)
 #   nrRlc[numDrbs].um.multiSession: false → default(true)
 
+# ============================================================================
+# H5 CHANGES SUMMARY
+# ============================================================================
+#
+# NwTt.ned:
+#   - ethIf: EthernetInterface → LayeredEthernetInterface + EthernetStreamingPhyLayer
+#   - Added ethLi: MessageDispatcher with serviceMapping = {"ethernetmac": "ethIf"}
+#   - encap.registerProtocol = false (avoid ethLi conflicts)
+#   - Connections: ethIf ↔ ethLi ↔ translator, encap ↔ ethLi
+#
+# DsTt.ned:
+#   - tsnEth: EthernetInterface → LayeredEthernetInterface + EthernetStreamingPhyLayer
+#   - ueEth: EthernetInterface → LayeredEthernetInterface + EthernetPhyLayer (non-streaming)
+#   - Added tsnLi, ueLi: MessageDispatchers with serviceMapping
+#   - Connections: interfaces ↔ dispatchers ↔ translator
+#
+# NwTtTranslator.cc:
+#   - registerProtocol(Protocol::ethernetMac) in INITSTAGE_LOCAL
+#   - registerService for encap on nl in INITSTAGE_NETWORK_LAYER
+#
+# DsTtTranslator.cc:
+#   - registerProtocol(Protocol::ethernetMac) on both gate pairs
+#   - DispatchProtocolReq + DirectionTag on outgoing packets
+#   - FCS value 0xC00DC00D for LayeredEthernetInterface compatibility
+#
+# .ini files:
+#   - Removed EthernetInterface overrides and promiscuous settings
+#   - Added streaming PHY for Device B: *.tsnDeviceB[*].eth[*].phyLayer.typename
+#
 # ============================================================================
 # TOTAL: 20 source files + 16 simulation files = 36 files
 # ============================================================================

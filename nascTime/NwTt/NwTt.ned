@@ -21,7 +21,7 @@
 package simu5g.nodes.nascTime.NwTt;
 
 import inet.common.MessageDispatcher;
-import inet.linklayer.ethernet.basic.EthernetInterface;
+import inet.linklayer.ethernet.modular.LayeredEthernetInterface;
 import inet.linklayer.ethernet.basic.EthernetEncapsulation;
 import inet.linklayer.ppp.PppInterface;
 import inet.node.base.NetworkLayerNodeBase;
@@ -41,46 +41,44 @@ module NwTt extends NetworkLayerNodeBase
         forwarding = default(true);
         multicastForwarding = default(false);
 
-        // NwTtTranslator config
         string ueAddress;
         string localAddress;
 
     gates:
-        // TSN-facing Ethernet port (dedicated, not the inherited ethg[])
         inout tsnEthg @labels(EthernetSignal);
-
-        // UPF-facing PPP port (same pattern as Upf.ned's filterGate)
         inout filterGate @loose @labels(PppFrame-conn);
+        output gptpSidebandOut @loose;
 
-		// gPTP sideband (connects to GptpSideband module in the network)
-        output gptpSidebandOut;
     submodules:
-        // --- Dedicated Ethernet interface for TSN port ---
-        ethIf: EthernetInterface {
+        ethIf: LayeredEthernetInterface {
             parameters:
+                bitrate = default(1Gbps);
+                phyLayer.typename = "EthernetStreamingPhyLayer";
+                processingDelayLayer.typename = "OmittedProcessingDelayLayer";
+                trafficConditionerLayer.typename = "OmittedTrafficConditionerLayer";
+                measurementLayer.typename = "OmittedMeasurementLayer";
                 @display("p=500,1000");
         }
 
-        // --- Dedicated PPP interface for UPF port ---
         pppIf: PppInterface {
             parameters:
                 @display("p=1150,1000");
         }
 
-        // --- UDP transport ---
         udp: Udp {
             parameters:
                 @display("p=375,200");
         }
 
-        // H3: EthernetEncapsulation for egress path (5GS → TSN)
+        // H3/H5: EthernetEncapsulation for egress path (5GS → TSN)
+        // registerProtocol=true so it registers ethernetmac service on nl → ipv4.lp
+        // Connected to nl (upper) and ethLi (lower)
         encap: EthernetEncapsulation {
             parameters:
                 @display("p=350,800");
-                registerProtocol = true;
+                registerProtocol = false;
         }
 
-        // --- NW-TT Translator ---
         translator: NwTtTranslator {
             parameters:
                 @display("p=675,80");
@@ -88,11 +86,19 @@ module NwTt extends NetworkLayerNodeBase
                 localAddress = parent.localAddress;
         }
 
-        // --- MessageDispatchers ---
+        // H5: Dispatcher between LayeredEthernetInterface and translator/encap
+        ethLi: MessageDispatcher {
+            parameters:
+                @display("p=500,900;b=500,5,,,,1");
+                // Route ethernetmac SERVICE requests to ethIf (gate out[0])
+                serviceMapping = {"ethernetmac": "ethIf"};
+        }
+
         tn: MessageDispatcher {
             parameters:
                 @display("p=750,300;b=1000,5,,,,1");
         }
+
         at: MessageDispatcher {
             parameters:
                 @display("p=750,146;b=1000,5,,,,1");
@@ -102,34 +108,32 @@ module NwTt extends NetworkLayerNodeBase
         // === TSN Ethernet port ===
         tsnEthg <--> ethIf.phys;
 
-        // INGRESS (TSN → 5GS): ethIf → translator directly
-        ethIf.upperLayerOut --> translator.ethIn;
+        // H5: ethIf ↔ ethLi (must be first connection so ethIf = gate[0])
+        ethIf.upperLayerOut --> ethLi.in++;
+        ethIf.upperLayerIn <-- ethLi.out++;
 
-        // EGRESS (5GS → TSN): encap → ethIf
-        ethIf.upperLayerIn <-- encap.lowerLayerOut;
+        // INGRESS: ethLi → translator (gate[1])
+        ethLi.out++ --> translator.ethIn;
+        ethLi.in++ <-- translator.ethOut;
 
-        // encap connects to nl for egress routing
-        // When IPv4 routes a packet to ethIf, nl sends it to encap,
-        // which adds the Ethernet header and sends to ethIf
+        // EGRESS lower: encap ↔ ethLi (gate[2])
+        encap.lowerLayerOut --> ethLi.in++;
+        encap.lowerLayerIn <-- ethLi.out++;
+
+        // EGRESS upper: encap ↔ nl (for IPv4 routing + service registration)
         encap.upperLayerOut --> nl.in++;
         encap.upperLayerIn <-- nl.out++;
 
-        // encap ingress (from ethIf) is unused — translator handles ingress
-        // but we need to connect the gate to avoid errors
-        encap.lowerLayerIn <-- translator.ethOut;
-
         // === UPF PPP port ===
         filterGate <--> pppIf.phys;
-
-        // pppIf connects to network layer dispatcher (normal INET routing)
         pppIf.upperLayerOut --> nl.in++;
         pppIf.upperLayerIn <-- nl.out++;
 
-        // === Translator ↔ at dispatcher (socket-based communication) ===
+        // === Translator ↔ at dispatcher ===
         translator.socketOut --> at.in++;
         translator.socketIn <-- at.out++;
 
-        // Direct path for forwarding raw IP datagrams (bypass UDP)
+        // Direct path for forwarding raw IP datagrams
         translator.ipForwardOut --> nl.in++;
         translator.ipForwardIn <-- nl.out++;
 
@@ -137,7 +141,7 @@ module NwTt extends NetworkLayerNodeBase
         at.out++ --> udp.appIn;
         at.in++ <-- udp.appOut;
 
-        // === at ↔ tn (for direct protocol access) ===
+        // === at ↔ tn ===
         at.out++ --> tn.in++;
         at.in++ <-- tn.out++;
 
@@ -153,6 +157,6 @@ module NwTt extends NetworkLayerNodeBase
         tn.out++ --> ipv4.transportIn;
         tn.in++ <-- ipv4.transportOut;
 
-        // gPTP sideband from translator to external gate
+        // gPTP sideband
         translator.gptpOut --> gptpSidebandOut;
 }

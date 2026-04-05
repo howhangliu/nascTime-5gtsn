@@ -224,9 +224,9 @@ simtime_t TsnAf::getBridgeDelayAvg() const
 void TsnAf::finish()
 {
     EV_INFO << "TsnAf: Bridge delay stats —"
-            << " min=" << delayMin * 1e6 << "us"
-            << " max=" << delayMax * 1e6 << "us"
-            << " avg=" << getBridgeDelayAvg() * 1e6 << "us"
+            << " min=" << delayMin.inUnit(SIMTIME_MS) << "ms"
+            << " max=" << delayMax.inUnit(SIMTIME_MS) << "ms"
+            << " avg=" << getBridgeDelayAvg().inUnit(SIMTIME_MS) << "ms"
             << " samples=" << delaySamples << endl;
 
     EV_INFO << "TsnAf: " << streamReservations.size()

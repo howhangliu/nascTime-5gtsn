@@ -30,6 +30,9 @@
 #include "inet/linklayer/ieee8021as/GptpPacket_m.h"
 #include "inet/clock/common/ClockTime.h"
 #include "inet/linklayer/common/UserPriorityTag_m.h"
+#include "inet/common/IProtocolRegistrationListener.h"
+#include "inet/common/DirectionTag_m.h"
+#include "inet/common/ProtocolUtils.h"
 
 Define_Module(DsTtTranslator);
 
@@ -46,6 +49,9 @@ void DsTtTranslator::initialize()
     ueToTsnSignal     = registerSignal("ueToTsnForwarded");
     packetDroppedSignal = registerSignal("packetDropped");
     residenceTimeSignal = registerSignal("residenceTime");
+
+    registerProtocol(Protocol::ethernetMac, gate("tsnOut"), gate("tsnIn"));
+    registerProtocol(Protocol::ethernetMac, gate("ueOut"), gate("ueIn"));
 }
 
 void DsTtTranslator::handleMessage(cMessage *msg)
@@ -119,9 +125,13 @@ void DsTtTranslator::forwardToUe(Packet *pkt)
 
     auto fcs = makeShared<EthernetFcs>();
     fcs->setFcsMode(FCS_DECLARED_CORRECT);
+    fcs->setFcs(0xC00DC00D);
     pkt->insertAtBack(fcs);
 
     pkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
+    pkt->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::ethernetMac);
+    pkt->addTagIfAbsent<DispatchProtocolReq>()->setServicePrimitive(SP_REQUEST);
+    pkt->addTagIfAbsent<DirectionTag>()->setDirection(DIRECTION_OUTBOUND);
 
     send(pkt, ueOutGateId);
 }
@@ -221,6 +231,9 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
             pkt->removeTagIfPresent<InterfaceInd>();
             pkt->removeTagIfPresent<DispatchProtocolReq>();
 
+            pkt->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::ethernetMac);
+            pkt->addTagIfAbsent<DispatchProtocolReq>()->setServicePrimitive(SP_REQUEST);
+            pkt->addTagIfAbsent<DirectionTag>()->setDirection(DIRECTION_OUTBOUND);
             send(pkt, tsnOutGateId);
             return;
         }
@@ -240,10 +253,13 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
 
     auto fcs = makeShared<EthernetFcs>();
     fcs->setFcsMode(FCS_DECLARED_CORRECT);
+    fcs->setFcs(0xC00DC00D);
     pkt->insertAtBack(fcs);
 
     pkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
-
+    pkt->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::ethernetMac);
+    pkt->addTagIfAbsent<DispatchProtocolReq>()->setServicePrimitive(SP_REQUEST);
+    pkt->addTagIfAbsent<DirectionTag>()->setDirection(DIRECTION_OUTBOUND);
     send(pkt, tsnOutGateId);
 }
 
@@ -255,4 +271,3 @@ void DsTtTranslator::finish()
             << " gptpForwarded=" << numGptpForwarded
             << " dropped=" << numDropped << endl;
 }
-
