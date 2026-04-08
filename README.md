@@ -18,7 +18,7 @@ with streaming PHY for TSN feature compatibility.
 **End-to-end path (multi-endpoint):**
 ```
                                                     UE[0] → DS-TT[0] → TSN Device B[0]
-TSN Device A → TsnSwitch → NW-TT → UPF → gNB ──── UE[1] → DS-TT[1] → TSN Device B[1]
+TSN Device A → TsnSwitch → NW-TT → UPF → gNB ────   UE[1] → DS-TT[1] → TSN Device B[1]
                                                     UE[2] → DS-TT[2] → TSN Device B[2]
 ```
 
@@ -37,6 +37,38 @@ TSN Device A → TsnSwitch → NW-TT → UPF → gNB ──── UE[1] → DS-T
 - TSN AF: 6 stream reservations, live delay tracking
 - Static BMCA: 6-node hierarchy validated, 0 errors
 - All bridge ports use LayeredEthernetInterface with EthernetStreamingPhyLayer
+
+---
+
+## License & Citation
+
+### License
+
+This project is licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
+
+You are free to use, modify, and distribute this software in both open-source and proprietary applications, provided that any modifications to the library itself remain open and users retain the ability to relink against modified versions.
+
+For full details, see the LICENSE file or visit the official page by the Free Software Foundation.
+
+### Support the Project
+
+If you find this repository useful for your research or development, please consider giving it a ⭐ on GitHub, it helps increase visibility and supports continued development.
+
+### Citation
+
+If you use this work in your research, please cite:
+
+```bibtex
+@article{nasctime2026,
+  title   = {nascTime: A Full-Stack 5G-TSN Bridge Simulation Framework with SDAP-Based QoS Mapping and IEEE 802.1AS Transparent Clock},
+  author  = {Mohamed Seliem, Utz Roedig, Cormac Sreenan, Dirk Pesch},
+  journal = {arXiv preprint arXiv:2604.04616},
+  year    = {2026}
+}
+```
+
+### Paper
+<a href= "https://arxiv.org/abs/2604.04616"> nascTime Draft</a> (Final version will appear in a conference proceeding)
 
 ---
 
