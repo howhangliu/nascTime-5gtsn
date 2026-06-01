@@ -259,6 +259,7 @@ void NwTtTranslator::handleEthernetFrame(Packet *pkt)
                 ipHdr->setDestAddress(tsnIp.toIpv4());
                 ipHdr->setProtocolId(IP_PROT_UDP);
                 ipHdr->setTimeToLive(64);
+                ipHdr->setDscp(5);
                 ipHdr->setTotalLengthField(ipHdr->getChunkLength() + udpPkt->getTotalLength());
                 ipHdr->setChecksumMode(FCS_DECLARED_CORRECT);
                 ipHdr->setChecksum(0xC00D);
@@ -297,7 +298,7 @@ void NwTtTranslator::handleEthernetFrame(Packet *pkt)
         }
     }
     // G4: Map PCP → DSCP for 5G QoS
-    if (vlanStripped && pcp > 0) {
+    if (vlanStripped) {
         auto ipHdr = pkt->removeAtFront<Ipv4Header>();
         ipHdr->setDscp(pcp);
         pkt->insertAtFront(ipHdr);

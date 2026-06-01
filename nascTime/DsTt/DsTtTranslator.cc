@@ -170,8 +170,14 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
     // Check if this is a gPTP-in-UDP encapsulated frame (dedicated port)
     auto ipHdr = pkt->peekAtFront<Ipv4Header>();
     if (ipHdr->getProtocolId() == IP_PROT_UDP) {
-        auto udpOffset = ipHdr->getChunkLength();
-        auto udpHdr = pkt->peekDataAt<UdpHeader>(udpOffset);
+        // Pop the IP header so UDP is at the front
+        if (ipHdr->getMoreFragments() || ipHdr->getFragmentOffset() > 0) {
+            EV_INFO << "DsTtTranslator: IP fragment, skipping UDP peek" << endl;
+            // Fall through to regular data handling
+        } else {
+        auto ipHdrPopped = pkt->popAtFront<Ipv4Header>();
+        //auto udpOffset = ipHdr->getChunkLength();
+        auto udpHdr = pkt->peekAtFront<UdpHeader>();//pkt->peekAt<UdpHeader>(udpOffset);
         EV_INFO << "DsTtTranslator: UDP dstPort=="<< udpHdr->getDestinationPort()
                 << " gptpPort="<< gptpEncapUdpPort<<endl;
         if (udpHdr->getDestinationPort() == gptpEncapUdpPort) {
@@ -179,7 +185,7 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
             numGptpForwarded++;
 
             // Strip IP + UDP headers to get the original gPTP Ethernet frame
-            pkt->popAtFront<Ipv4Header>();
+            //pkt->popAtFront<Ipv4Header>();
             pkt->popAtFront<UdpHeader>();
             // G3: Read and strip the residence time header
             auto residenceHdr = pkt->popAtFront<simu5g::GptpResidenceHeader>();
@@ -236,9 +242,12 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
             pkt->addTagIfAbsent<DirectionTag>()->setDirection(DIRECTION_OUTBOUND);
             send(pkt, tsnOutGateId);
             return;
+        }     else {
+            // Not gPTP — put the IP header back
+            pkt->insertAtFront(ipHdrPopped);
+        }
         }
     }
-
     // Normal data frame — existing forwarding logic
     pkt->removeTagIfPresent<MacAddressInd>();
     pkt->removeTagIfPresent<PacketProtocolTag>();
