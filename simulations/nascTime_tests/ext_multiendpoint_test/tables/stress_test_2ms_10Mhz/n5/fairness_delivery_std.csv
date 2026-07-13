@@ -1,0 +1,5 @@
+N,flow,DRR,MAXCI,MAXCI_COMP,PF,QOS_PF
+5,blk_be,,,,,
+5,clc_hp,0.0,0.0,0.0,0.5,0.0
+5,mv_be,33.5,98.5,98.5,35.6,182.4
+5,mv_hp,0.5,0.2,0.2,0.0,0.0
