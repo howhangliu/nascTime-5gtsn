@@ -78,10 +78,10 @@ network NwTtTestNetwork
             @display("p=640,350");
         }
         gnb: gNodeB {
-            @display("p=820,350;is=vl");
+            @display("p=780,350;is=vl");
         }
         ue[1]: NrUe {
-            @display("p=1000,350");
+            @display("p=900,350");
         }
 
     connections:

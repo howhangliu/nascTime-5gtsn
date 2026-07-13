@@ -93,7 +93,7 @@ network BridgeTestNetwork
             @display("p=780,350;is=vl");
         }
         ue[1]: NRUeDsTt {
-            @display("p=960,350");
+            @display("p=890,350");
         }
 
         // --- DS-TT (egress bridge port) ---

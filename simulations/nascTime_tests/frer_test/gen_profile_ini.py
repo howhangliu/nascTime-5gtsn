@@ -199,38 +199,45 @@ def emit_sdap(out, n: int, *, frer: bool = False) -> None:
 
     Without FRER: 4 DRBs (DRB 0/1/2/3).
     With FRER:    5 DRBs (DRB 0/1/2/3/4), DRB 4 carries QFI 8 (replica).
+
+    NOTE: numDrbs is NOT emitted here. Confirmed via grep against the
+    v1.5.0 Simu5G source (src/simu5g/stack/*.ned and stack/sdap/*.ned) --
+    that parameter does not exist anywhere in v1.5.0. DRB count is implicit
+    from the distinct "drb" IDs listed in drbConfig below.
     """
     num_drbs = 5 if frer else 4
     drb_label = "BE/MV-HP/CLC/gPTP/FRER-replica" if frer else "BE/MV-HP/CLC/gPTP"
     print(f"# ----- SDAP / DRB config ({num_drbs} DRBs: {drb_label}) -----", file=out)
-    print(f"*.gnb.cellularNic.numDrbs = {num_drbs}", file=out)
-    print(f"*.ue[*].cellularNic.numDrbs = {num_drbs}", file=out)
     print(f"", file=out)
 
     # gNB drbConfig: one entry per (UE, DRB)
+    # NOTE: keys quoted consistently with emit_drb_qos() below and with the
+    # known-good v1.5.0 standalone_drb example -- prior version had unquoted
+    # keys here, which OMNeT++'s cValueMap-style literal syntax tolerates,
+    # but the inconsistency across the file was worth cleaning up regardless.
     print(f"*.gnb.cellularNic.sdap.drbConfig = [ \\", file=out)
     entries = []
     for i in range(n):
         ue_id = 2049 + i
-        entries.append(f"    {{drb: 0, ue: {ue_id}, qfiList: [0]}}")
-        entries.append(f"    {{drb: 1, ue: {ue_id}, qfiList: [6]}}")
-        entries.append(f"    {{drb: 2, ue: {ue_id}, qfiList: [7]}}")
-        entries.append(f"    {{drb: 3, ue: {ue_id}, qfiList: [5]}}")   # gPTP
+        entries.append(f'    {{"drb": 0, "ue": {ue_id}, "qfiList": [0], "rlcType": "UM"}}')
+        entries.append(f'    {{"drb": 1, "ue": {ue_id}, "qfiList": [6], "rlcType": "UM"}}')
+        entries.append(f'    {{"drb": 2, "ue": {ue_id}, "qfiList": [7], "rlcType": "UM"}}')
+        entries.append(f'    {{"drb": 3, "ue": {ue_id}, "qfiList": [5], "rlcType": "UM"}}')   # gPTP
         if frer:
-            entries.append(f"    {{drb: 4, ue: {ue_id}, qfiList: [8]}}")  # FRER replica
+            entries.append(f'    {{"drb": 4, "ue": {ue_id}, "qfiList": [8], "rlcType": "UM"}}')  # FRER replica
     print(", \\\n".join(entries) + "]", file=out)
     print(f"", file=out)
 
     # UE drbConfig (uniform across UEs)
     print(f"*.ue[*].cellularNic.sdap.drbConfig = [ \\", file=out)
-    print(f"    {{drb: 0, qfiList: [0]}}, \\", file=out)
-    print(f"    {{drb: 1, qfiList: [6]}}, \\", file=out)
-    print(f"    {{drb: 2, qfiList: [7]}}, \\", file=out)
+    print(f'    {{"drb": 0, "qfiList": [0], "rlcType": "UM"}}, \\', file=out)
+    print(f'    {{"drb": 1, "qfiList": [6], "rlcType": "UM"}}, \\', file=out)
+    print(f'    {{"drb": 2, "qfiList": [7], "rlcType": "UM"}}, \\', file=out)
     if frer:
-        print(f"    {{drb: 3, qfiList: [5]}}, \\", file=out)
-        print(f"    {{drb: 4, qfiList: [8]}}]", file=out)
+        print(f'    {{"drb": 3, "qfiList": [5], "rlcType": "UM"}}, \\', file=out)
+        print(f'    {{"drb": 4, "qfiList": [8], "rlcType": "UM"}}]', file=out)
     else:
-        print(f"    {{drb: 3, qfiList: [5]}}]", file=out)
+        print(f'    {{"drb": 3, "qfiList": [5], "rlcType": "UM"}}]', file=out)
     print(f"", file=out)
 
 
@@ -342,7 +349,13 @@ def emit_device_a_apps(out, assignment: list[tuple[int, str, ProfileDef]]) -> No
 
 
 def emit_stream_mappings(out, flat: list[tuple]) -> None:
-    """Emit streamIdentifier + streamCoder mappings."""
+    """Emit streamIdentifier + streamCoder mappings.
+
+    NOTE: packetFilter uses expr(has(udp) && udp.destPort == N) syntax --
+    NOT independently verified against INET's filter grammar this session.
+    Confirm this actually matches packets (e.g. via a small n=1 run and
+    checking Qtenv/scalars) before trusting output from a full --all sweep.
+    """
     print(f"# ----- TSN Device A: stream identification + VLAN encoding -----", file=out)
 
     id_entries = []

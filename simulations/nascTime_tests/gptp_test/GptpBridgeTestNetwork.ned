@@ -51,7 +51,7 @@ network GptpBridgeTestNetwork
         }
         upf: Upf { @display("p=600,350"); }
         gnb: gNodeB { @display("p=780,350;is=vl"); }
-        ue[1]: NRUeDsTt { @display("p=960,350"); }
+        ue[1]: NRUeDsTt { @display("p=890,350"); }
         dsTt: DsTt { @display("p=1120,350"); }
         tsnDeviceB: TsnDevice { @display("p=1300,350"); }
 

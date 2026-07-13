@@ -182,8 +182,6 @@ def emit_sdap(out, n: int) -> None:
     high endpoint counts, which otherwise causes slave clock servo divergence.
     """
     print(f"# ----- SDAP / DRB config (4 DRBs: BE/MV-HP/CLC/gPTP) -----", file=out)
-    print(f"*.gnb.cellularNic.numDrbs = 4", file=out)
-    print(f"*.ue[*].cellularNic.numDrbs = 4", file=out)
     print(f"", file=out)
 
     # gNB drbConfig: one entry per (UE, DRB)
@@ -281,6 +279,7 @@ def emit_device_a_apps(out, assignment: list[tuple[int, str, ProfileDef]]) -> No
         print(f"*.tsnDeviceA.app[{app_idx}].messageLength = {flow.msg_bytes}B", file=out)
         print(f"*.tsnDeviceA.app[{app_idx}].sendInterval = {flow.interval}", file=out)
         print(f"*.tsnDeviceA.app[{app_idx}].startTime = uniform(0s, 0.01s)", file=out)
+        print(f"*.tsnDeviceA.app[{app_idx}].dscp = {flow.qfi}", file=out)
         print(f"", file=out)
 
     # Reverse traffic sink

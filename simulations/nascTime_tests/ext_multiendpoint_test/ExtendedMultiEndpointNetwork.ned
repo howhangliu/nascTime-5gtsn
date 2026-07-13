@@ -19,6 +19,7 @@ import nasctime.nodes.NwTt.NwTt;
 import nasctime.nodes.NwTt.GptpSideband;
 import nasctime.nodes.DsTt.DsTt;
 import simu5g.nodes.gNodeB;
+import nasctime.nodes.NGNodeB;
 import nasctime.nodes.DsTt.NRUeDsTt;
 import simu5g.nodes.Upf;
 import simu5g.world.radio.LteChannelControl;
@@ -109,7 +110,7 @@ network ExtendedMultiEndpointNetwork
         upf: Upf {
             @display("p=600,350");
         }
-        gnb: gNodeB {
+        gnb: NGNodeB {
             @display("p=780,350;is=vl");
         }
 
