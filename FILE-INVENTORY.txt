@@ -1,81 +1,281 @@
-# File Inventory — nascTime (5G-TSN Bridge) for Simu5G
+# File Inventory — nascTime (5G-TSN Bridge) for Simu5G v1.5.0
 #
-# Copy src/nodes/nascTime/ into your Simu5G source tree.
-# Copy simulations/nascTime_tests/ into your Simu5G simulations tree.
-# Apply NRNicEnbDrb.ned modifications (multiSession = true).
-# Rebuild: cd src && make -j$(nproc)
+# nascTime is now a STANDALONE OMNeT++ project referencing inet4.6 and a
+# patched simu5g-1.5.0 as sibling projects (project references), not files
+# copied into Simu5G's own tree. See INSTALL.md / README.md for the project
+# reference / Compile-tab setup (this replaced the old "copy into Simu5G
+# source tree" workflow described in the previous version of this file).
+#
+# Simu5G core patches live in simu5g-1.5.0's own git history, on the
+# nasctime-core-patches branch (see "SIMU5G CORE PATCHES" section below) —
+# NOT applied by hand per this inventory anymore.
+#
+# Rebuild: from the OMNeT++ IDE, or `make MODE=release all` from nascTime/src
+# once Compile/Link tabs have both inet-4.6.0/src and simu5g-1.5.0/src as
+# include + library paths (see project setup notes — this was the source of
+# an early "inet/common/packet/Packet.h not found" build failure).
 
 # ============================================================================
-# SOURCE MODULES — src/nodes/nascTime/
+# SOURCE MODULES — nascTime/src/nodes/
 # ============================================================================
 
 # NW-TT (Network-side TSN Translator)
-src/nodes/nascTime/NwTt/NwTt.ned                    Compound module (LayeredEthernetInterface + ethLi dispatcher)
-src/nodes/nascTime/NwTt/NwTtTranslator.ned           Simple module, L2↔IP + QoS + gPTP replication
-src/nodes/nascTime/NwTt/NwTtTranslator.h             C++ header
-src/nodes/nascTime/NwTt/NwTtTranslator.cc            C++ impl (registerProtocol, manual encap service registration)
-src/nodes/nascTime/NwTt/GptpSideband.ned             gPTP sideband delay module (fallback)
-src/nodes/nascTime/NwTt/GptpSideband.h               C++ header
-src/nodes/nascTime/NwTt/GptpSideband.cc              C++ implementation
-src/nodes/nascTime/NwTt/GptpResidenceHeader.msg      Residence time header (auto-compiled)
+src/nodes/nascTime/NwTt/NwTt.ned                     Compound module. Confirmed current: dual PPP
+                                                      (filterGate/pppIf primary, filterGate2/pppIf2
+                                                      conditional on frerInterSession), conditional
+                                                      frerReplicator (DL, frerEnabled) and
+                                                      frerRecoveryUl (UL, frerUplinkEnabled).
+src/nodes/nascTime/NwTt/NwTtTranslator.ned           Simple module, L2<->IP + QoS + gPTP replication.
+                                                      Owns mappedPcpValues (PCP->DSCP translation,
+                                                      default maps all PCP 0-7) and
+                                                      gptpTransportMode ("gtpu"|"sideband", default
+                                                      unconfirmed -- explicitly set "gtpu" in every
+                                                      ini that uses it so far).
+src/nodes/nascTime/NwTt/NwTtTranslator.h
+src/nodes/nascTime/NwTt/NwTtTranslator.cc
+src/nodes/nascTime/NwTt/GptpSideband.ned             gPTP sideband delay module (fallback path,
+                                                      only relevant when gptpTransportMode="sideband").
+src/nodes/nascTime/NwTt/GptpSideband.h
+src/nodes/nascTime/NwTt/GptpSideband.cc
+src/nodes/nascTime/NwTt/GptpResidenceHeader.msg
 
 # DS-TT (Device-side TSN Translator) + UE variants
-src/nodes/nascTime/DsTt/DsTt.ned                     Compound module (LayeredEthernetInterface + tsnLi/ueLi dispatchers)
-src/nodes/nascTime/DsTt/DsTtTranslator.ned           Simple module, L2 forwarder + gPTP + QoS
-src/nodes/nascTime/DsTt/DsTtTranslator.h             C++ header
-src/nodes/nascTime/DsTt/DsTtTranslator.cc            C++ impl (registerProtocol, DispatchProtocolReq, DirectionTag)
-src/nodes/nascTime/DsTt/NRUeDsTt.ned                 NR UE with Ethernet port (extends NRUe)
-src/nodes/nascTime/DsTt/NRUeDsTtDrb.ned              NR UE DRB with Ethernet port (extends NRUeDrb)
+src/nodes/nascTime/DsTt/DsTt.ned                     Compound module (LayeredEthernetInterface +
+                                                      tsnLi/ueLi dispatchers). frerRecovery (DL) and
+                                                      frerReplicatorUl (UL) presumed present, gated
+                                                      the same way NwTt's are -- NOT independently
+                                                      viewed/confirmed this session; verify before
+                                                      relying on this description.
+src/nodes/nascTime/DsTt/DsTtTranslator.ned
+src/nodes/nascTime/DsTt/DsTtTranslator.h
+src/nodes/nascTime/DsTt/DsTtTranslator.cc
+src/nodes/nascTime/DsTt/NRUeDsTt.ned                 NR UE with Ethernet port (extends NrNicUe +
+                                                      hasSdap=true, per v1.5.0 SDAP rework -- was
+                                                      "extends NRUe" in the old design).
+src/nodes/nascTime/DsTt/NRUeDsTtDrb.ned              STATUS: NEEDS REWORK, not yet done. Still
+                                                      declared as extending the removed NRNicUeDrb
+                                                      base (confirmed absent from v1.5.0, same as
+                                                      gNodeBSdap/NRNicEnbDrb). Used as-is (with a
+                                                      TODO placeholder typename) in qos_test.ini as
+                                                      of this session -- needs the same
+                                                      extend-NrNicUe-plus-hasSdap treatment as
+                                                      NRUeDsTt.ned before qos_test can build clean.
 
 # TSN Application Function + Static BMCA
-src/nodes/nascTime/TsnAf/TsnAf.ned                   TSN AF (bridge capabilities + CNC config)
-src/nodes/nascTime/TsnAf/TsnAf.h                     C++ header
-src/nodes/nascTime/TsnAf/TsnAf.cc                    C++ implementation
-src/nodes/nascTime/TsnAf/StaticBmca.ned              Static BMCA (clock hierarchy management)
-src/nodes/nascTime/TsnAf/StaticBmca.h                C++ header
-src/nodes/nascTime/TsnAf/StaticBmca.cc               C++ implementation
+src/nodes/nascTime/TsnAf/TsnAf.ned
+src/nodes/nascTime/TsnAf/TsnAf.h
+src/nodes/nascTime/TsnAf/TsnAf.cc
+src/nodes/nascTime/TsnAf/StaticBmca.ned
+src/nodes/nascTime/TsnAf/StaticBmca.h
+src/nodes/nascTime/TsnAf/StaticBmca.cc
+
+# FRER framework (IEEE 802.1CB) — NEW this migration, not in original inventory
+src/nodes/frer/IFrerTransportBinding.h               Abstract transport-binding interface:
+                                                      getReplicaDscp(), isReplicaPacket(),
+                                                      mapToOriginalDscp().
+src/nodes/frer/FrerReplicator.ned
+src/nodes/frer/FrerReplicator.h
+src/nodes/frer/FrerReplicator.cc                     Confirmed: reads frerStreams (comma-separated
+                                                      DSCP list), replicaDscp, transportBinding
+                                                      ("drb"|"pduSession"|"dualConnectivity"). For
+                                                      path-diverse bindings, resolves replicaInterface
+                                                      by name via IInterfaceTable with a confirmed
+                                                      null-check + cRuntimeError (not silent).
+src/nodes/frer/FrerRecovery.ned
+src/nodes/frer/FrerRecovery.h
+src/nodes/frer/FrerRecovery.cc                       windowSize/windowTimeout-based duplicate
+                                                      elimination, confirmed via frer_sweep run:
+                                                      recoveredPrimary/recoveredReplica/
+                                                      duplicatesDropped/windowOverruns/passedThrough
+                                                      stats all behave as expected for
+                                                      FRER-stream-vs-passthrough traffic.
+
+PathDiverseTransportBinding                          Shared base for PduSession/DualConn bindings.
+                                                      Confirmed: sets replica DSCP AND an
+                                                      InterfaceReq tag (replicaInterfaceId_) to force
+                                                      egress interface, bypassing normal IP routing
+                                                      table lookup for the replica packet.
+PduSessionTransportBinding                            Trivial subclass of PathDiverseTransportBinding.
+                                                      Routes replica via pppIf2 -> upf2 -> gnb (same
+                                                      gNB as primary).
+DualConnTransportBinding                              Trivial subclass of PathDiverseTransportBinding.
+                                                      Routes replica via pppIf2 -> upf2 -> gnb2
+                                                      (separate gNB). STATUS: not yet exercised end
+                                                      to end -- DC work starts next session.
+
+# gNB extension for inter-session/DC N3 path diversity — NEW this migration
+src/nodes/nascTime/NGNodeB.ned                     Extends simu5g.nodes.gNodeB, adds a second
+                                                      physical PPP gate (ppp2/pppIf2, conditional on
+                                                      frerInterSession) wired straight into the
+                                                      inherited nl dispatcher -- no second
+                                                      TrafficFlowFilter/GtpUser pair. (An earlier
+                                                      draft this session duplicated
+                                                      TrafficFlowFilter/GtpUser onto a shared `at`
+                                                      dispatcher and crashed with
+                                                      "protocol is already registered" -- corrected;
+                                                      GtpUser demultiplexes by UDP port, not by
+                                                      physical interface, so only the physical gate
+                                                      needed duplicating, not the tunnel-processing
+                                                      pipeline.)
 
 # ============================================================================
-# SIMULATIONS — simulations/nascTime_tests/
+# SIMULATIONS — nascTime/simulations/nascTime_tests/
 # ============================================================================
 
-# NW-TT only baseline (G1)
+# NW-TT only baseline
 simulations/nascTime_tests/nwtt_test/NwTtTestNetwork.ned
-simulations/nascTime_tests/nwtt_test/omnetpp.ini
-simulations/nascTime_tests/nwtt_test/nwtt_ip_config.xml
+simulations/nascTime_tests/nwtt_test/omnetpp.ini      STATUS: v1.5.0 fixes applied (servingNodeId
+                                                      rename, channelModel[0] path). hasSdap
+                                                      deliberately left unset -- this scenario's
+                                                      single QFI-0 flow doesn't exercise SDAP/DRB
+                                                      routing, confirm that's still the intent if
+                                                      this file is ever extended.
 
-# Full bridge without gPTP (G1)
+# Full bridge without gPTP
 simulations/nascTime_tests/bridge_test/BridgeTestNetwork.ned
-simulations/nascTime_tests/bridge_test/omnetpp.ini
-simulations/nascTime_tests/bridge_test/bridge_ip_config.xml
+simulations/nascTime_tests/bridge_test/omnetpp.ini    STATUS: v1.5.0 fixes applied. sdap.drbConfig
+                                                      was missing entirely (would crash on first
+                                                      SDAP TX) -- added, minimal single-DRB QFI-0
+                                                      config.
 
-# Full bridge with gPTP + residence time (G2 + G3)
+# Full bridge with gPTP + residence time
 simulations/nascTime_tests/gptp_test/GptpBridgeTestNetwork.ned
-simulations/nascTime_tests/gptp_test/omnetpp.ini
-simulations/nascTime_tests/gptp_test/gptp_bridge_ip_config.xml
+simulations/nascTime_tests/gptp_test/omnetpp.ini      STATUS: v1.5.0 fixes applied, same pattern as
+                                                      bridge_test. gptpTransportMode="gtpu" set
+                                                      explicitly; gptpSideband.sidebandDelay is
+                                                      configured but its interaction with gtpu mode
+                                                      is unverified -- check NwTtTranslator.cc.
 
-# QoS + TSN AF + BMCA single endpoint (G4 + G5 + G6)
+# QoS + TSN AF + BMCA single endpoint
 simulations/nascTime_tests/qos_test/QosBridgeTestNetwork.ned
-simulations/nascTime_tests/qos_test/omnetpp.ini
-simulations/nascTime_tests/qos_test/qos_bridge_ip_config.xml
-simulations/nascTime_tests/qos_test/cnc_config.xml
+simulations/nascTime_tests/qos_test/omnetpp.ini       STATUS: PARTIALLY BLOCKED. gNodeBSdap/
+                                                      NRNicEnbDrb node types confirmed absent from
+                                                      v1.5.0, replaced with NrNicEnb+hasSdap=true.
+                                                      NRUeDsTtDrb still needs the same rework (see
+                                                      above) before this builds clean. Also fixed:
+                                                      schedulingDiscipline was MAXCI (channel-quality
+                                                      based, doesn't consider DRB priority at all --
+                                                      undermines the QoS-differentiation this test is
+                                                      meant to show), changed to QOS_PF, which then
+                                                      requires mac.drbQosConfig (was missing, added).
 
-# Multi-endpoint scaling + bidirectional (S1-S8)
+# Multi-endpoint scaling + bidirectional
 simulations/nascTime_tests/multi_endpoint_test/MultiEndpointNetwork.ned
-simulations/nascTime_tests/multi_endpoint_test/omnetpp.ini
-simulations/nascTime_tests/multi_endpoint_test/multi_ip_config.xml
-simulations/nascTime_tests/multi_endpoint_test/cnc_config.xml
+simulations/nascTime_tests/multi_endpoint_test/omnetpp.ini   STATUS: CONFIRMED WORKING. Baseline
+                                                      run (no FRER/DC) clean on v1.5.0: 99.8-99.9%
+                                                      high-priority delivery, 0 drops, gPTP forwarding
+                                                      and bridge-delay stats all consistent. Tagged
+                                                      baseline-v1.5.0-working in git.
+
+# Scalability sweep — NEW this migration
+simulations/nascTime_tests/ext_multiendpoint_test/ExtendedMultiEndpointNetwork.ned
+simulations/nascTime_tests/ext_multiendpoint_test/ex_multi_omnetpp.ini   STATUS: v1.5.0 fixes
+                                                      applied (servingNodeId, hasSdap, dead
+                                                      nrPdcp[*]/nrRlc[*].multiSession params removed,
+                                                      channelModel[0] path). This file is `include`d
+                                                      by frer_sweep.ini and frer_intersession.ini --
+                                                      changes here propagate to both.
+simulations/nascTime_tests/ext_multiendpoint_test/gen_profile_ini.py     Generates per-N traffic
+                                                      profile fragments (CLC/MV/BLK mix). STATUS:
+                                                      fixed (numDrbs removed -- confirmed dead
+                                                      parameter in v1.5.0; JSON keys quoted
+                                                      consistently). NOTE: apps deliberately don't
+                                                      set .dscp directly -- NwTtTranslator's
+                                                      mappedPcpValues (default maps all PCP 0-7)
+                                                      performs PCP->DSCP translation for TSN-sourced
+                                                      traffic, confirmed via qos_test.ini's use of
+                                                      the same mechanism.
+simulations/nascTime_tests/ext_multiendpoint_test/profiles/             Generated fragments,
+                                                      profiles_N{1,5,10,15,20,30,40}.ini.
+
+# FRER validation — NEW this migration
+simulations/nascTime_tests/frer_test/frer_uplink.ini        STATUS: not yet reviewed/run.
+                                                      Recommended first target (lowest dependency —
+                                                      no core patches needed, unlike intersession/DC).
+simulations/nascTime_tests/frer_test/frer_intersession.ini  STATUS: statically reviewed and
+                                                      corrected (stale replicaDscp=34 -> 8; gnb
+                                                      confirmed needs NascGNodeB for physical ppp2,
+                                                      NOT a routing-only forceTunnelPeer solution as
+                                                      first assumed -- corrected mid-session). Not
+                                                      yet run end-to-end with NascGNodeB +
+                                                      forceTunnelPeer together.
+simulations/nascTime_tests/frer_test/frer_dualconn.ini      STATUS: not yet reviewed. Needs the
+                                                      full DC core patch set (Binder/LteAmc/
+                                                      LtePhyUe) -- next session's work. Expect this
+                                                      to be the hardest of the four: v1.5.0 moved
+                                                      handover logic out of LtePhyUe entirely into a
+                                                      new HandoverController submodule under Rrc,
+                                                      and renamed masterId_ -> servingNodeId_.
+simulations/nascTime_tests/frer_test/frer_sweep.ini          STATUS: corrected (bandwidth plan —
+                                                      8 of 12 configs were silently running at the
+                                                      wrong carrier width due to inherited defaults
+                                                      rather than explicit numBands per config, now
+                                                      all explicit; gptpTransportMode made explicit
+                                                      on the FrerGptp_* configs, was relying on an
+                                                      unconfirmed NED default). Confirmed working at
+                                                      N=15 asymmetric: FRER replication/recovery
+                                                      stats consistent, CLC-only replication behaving
+                                                      as designed, non-FRER endpoints correctly
+                                                      passthrough-only.
+simulations/nascTime_tests/frer_test/gen_profile_ini.py      FRER-extended version (--frer /
+                                                      --frer-symmetric flags, DRB 4 / QFI 8). STATUS:
+                                                      same numDrbs/quoting fixes applied as the
+                                                      non-FRER version. UNVERIFIED this session: the
+                                                      expr(has(udp) && udp.destPort == N) packet
+                                                      filter syntax (changed from the plain wildcard
+                                                      form in the non-FRER version) -- not checked
+                                                      against INET's filter grammar, recommend a
+                                                      small n=1 run to confirm it actually matches
+                                                      packets before trusting a full sweep's output.
+simulations/nascTime_tests/frer_test/profiles/               Generated fragments, plain +
+                                                      _frer_asym + _frer_sym variants per N.
 
 # ============================================================================
-# SIMU5G MODIFICATIONS (apply manually)
+# SIMU5G CORE PATCHES — tracked on simu5g-1.5.0's nasctime-core-patches
+# branch, NOT applied by hand per this inventory. See that repo's git log
+# for the authoritative list; summary as of this session:
 # ============================================================================
-
-# src/stack/NRNicEnbDrb.ned:
-#   nrPdcp[numDrbs].multiSession: false → default(true)
-#   nrRlc[numDrbs].um.multiSession: false → default(true)
+#
+# src/simu5g/corenetwork/gtp/GtpUser.ned / .h / .cc
+#   Added forceTunnelPeer (string, default ""). Bypasses TFT/Binder-based
+#   tunnel routing entirely when set; guarded to UPF/PGW ownerType only.
+#   Committed this session. Ported from the v1.4.1-sdap-2-era design,
+#   adapted for v1.5.0's Qfi strong-typedef (was uint8_t) and
+#   Binder::getServingNodeOrSelf() (renamed from getNextHop()).
+#
+# src/simu5g/stack/mac/LteMacEnb.cc
+#   Guarded an unsigned-int underflow in macSduRequest() when a CID's
+#   scheduler grant is smaller than MAC_HEADER (2 bytes) -- was silently
+#   wrapping to ~4.29e9 and crashing with a misleading "configured
+#   queueSize too low" cRuntimeError under multi-DRB QOS_PF contention.
+#   Candidate for upstream report (not yet filed as of this session).
+#
+# NOT DONE, confirmed obsolete from the original inventory:
+#   "src/stack/NRNicEnbDrb.ned: nrPdcp[numDrbs].multiSession" -- this file
+#   does not exist in v1.5.0 (confirmed absent, along with gNodeBSdap and
+#   NRNicUeDrb). SDAP/DRB is now hasSdap=true on the standard NrNicEnb/
+#   NrNicUe NIC types; there is no multiSession-style parameter anywhere
+#   in v1.5.0 (confirmed via grep) -- this entire modification is dead
+#   and should not be attempted.
+#
+# STILL TO COME (DC work, next session):
+#   Binder: DC secondary-node registration (registerDcSecondary,
+#     getDcNextHop, getDcPrimaryNextHop) -- Binder methods are virtual as
+#     of v1.5.0, favor a subclass over a direct patch where practical.
+#   LteAmc: DC-secondary check, target getServingNodeOrSelf() (renamed).
+#   LtePhyUe: DC-secondary attach logic -- masterId_ renamed to
+#     servingNodeId_, and handover logic (likely including the attach
+#     hook this needs) was extracted into a new HandoverController
+#     submodule under Rrc. Re-read that module before assuming this patch
+#     still belongs in LtePhyUe at all.
+#   LtePhyBase: destId param on getReceiverGateIndex() for DC secondary
+#     routing -- confirmed signature otherwise unchanged, should be
+#     low-risk once the above land.
 
 # ============================================================================
-# H5 CHANGES SUMMARY
+# H5 CHANGES SUMMARY (historical — predates the v1.5.0 migration, kept
+# for context; describes the LayeredEthernetInterface/MessageDispatcher
+# work done against the v1.4.1-sdap-2-era codebase)
 # ============================================================================
 #
 # NwTt.ned:
@@ -99,10 +299,11 @@ simulations/nascTime_tests/multi_endpoint_test/cnc_config.xml
 #   - DispatchProtocolReq + DirectionTag on outgoing packets
 #   - FCS value 0xC00DC00D for LayeredEthernetInterface compatibility
 #
-# .ini files:
-#   - Removed EthernetInterface overrides and promiscuous settings
-#   - Added streaming PHY for Device B: *.tsnDeviceB[*].eth[*].phyLayer.typename
-#
 # ============================================================================
-# TOTAL: 20 source files + 16 simulation files = 36 files
+# TOTAL as of this session: ~26 nascTime source files (was 20 -- added FRER
+# framework + NascGNodeB) + ~24 simulation files (was 16 -- added
+# ext_multiendpoint_test and frer_test directories) + 2 committed Simu5G
+# core patches (GtpUser forceTunnelPeer, LteMacEnb underflow guard), with
+# 3 more core patches (Binder/LteAmc/LtePhyUe DC support) scoped but not
+# yet started.
 # ============================================================================
