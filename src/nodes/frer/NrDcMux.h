@@ -13,14 +13,12 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef __SIMU5G_1_4_1_SDAP_DCMUX_H_
-#define __SIMU5G_1_4_1_SDAP_DCMUX_H_
+#ifndef __SIMU5G_1_5_0_NRDCMUX_H_
+#define __SIMU5G_1_5_0_NRDCMUX_H_
 
 #include <omnetpp.h>
 
 using namespace omnetpp;
-
-namespace simu5g {
 
 /**
  * TODO - Generated class
@@ -36,6 +34,5 @@ class NrDcMux : public cSimpleModule
       virtual void handleMessage(cMessage *msg) override;
 };
 
-} //namespace
 
 #endif

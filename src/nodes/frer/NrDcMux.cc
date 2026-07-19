@@ -8,8 +8,6 @@
 //
 #include "NrDcMux.h"
 
-namespace simu5g {
-
 Define_Module(NrDcMux);
 
 void NrDcMux::initialize()
@@ -35,8 +33,7 @@ void NrDcMux::handleMessage(cMessage *msg)
         send(msg, primaryOutId);
     }
     else {
-        EV_WARN << "DcMux: unexpected gate, dropping" << endl;
+        EV_WARN << "NrDcMux: unexpected gate, dropping" << endl;
         delete msg;
     }
 }
-}// namespace
