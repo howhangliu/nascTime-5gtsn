@@ -42,7 +42,7 @@ checkenvir:
 
 makefiles: checkenvir
 	@$(info *** CREATING Makefile with INET_ROOT=$(INET_ROOT) SIMU5G_ROOT=$(SIMU5G_ROOT))
-	@cd src && opp_makemake -f --deep \
+	@cd src && opp_makemake -f --deep --make-so -o nasctime \
 		-KINET_PROJ=$(INET_ROOT) -KSIMU5G_PROJ=$(SIMU5G_ROOT) \
 		-DINET_IMPORT \
 		-I. -I$$\(INET_PROJ\)/src -I$$\(SIMU5G_PROJ\)/src \
