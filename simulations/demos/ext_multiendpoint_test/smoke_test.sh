@@ -5,27 +5,55 @@
 #
 # This script:
 #   1. Generates all profile fragments (profiles_N{N}.ini)
-#   2. Builds the project (assumes you've configured opp_makemake)
-#   3. Runs the N=5 heterogeneous scenario
-#   4. Inspects the results to confirm packets flow on every profile
+#   2. Runs the N=5 heterogeneous scenario
+#   3. Inspects the results to confirm packets flow on every profile
 #
-# Run from the multi_endpoint_test directory.
+# nascTime / FRER: relocated to bin/, made location-independent -- can be
+# invoked from anywhere. Updated for nascTime's shared-library build
+# (--make-so): adds -l for libnasctime.so and the LD_LIBRARY_PATH needed
+# to load it, and widens NED roots to include src/ and tests/ alongside
+# simulations/, matching nascTime's .nedfolders. Assumes nascTime is
+# already built (run `make` from the nascTime root first).
+#
+# Usage: bin/smoke_test.sh
 #
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SIM_DIR="${SIM_DIR:-$(pwd)}"
-INET_DIR="${INET_DIR:-../../../../../inet-4.6.0/src}"
-SIMU5G_DIR="${SIMU5G_DIR:-../../../../src}"
+NASCTIME_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKSPACE_ROOT="$(cd "$NASCTIME_ROOT/.." && pwd)"
+SCENARIO_DIR="$NASCTIME_ROOT/simulations/demos/ext_multiendpoint_test"
+
+INET_SRC="${INET_SRC:-$WORKSPACE_ROOT/inet-4.6.0/src}"
+SIMU5G_SRC="${SIMU5G_SRC:-$WORKSPACE_ROOT/simu5g-1.5.0/src}"
+NASCTIME_SRC="$NASCTIME_ROOT/src"
+NED_ROOTS="$NASCTIME_SRC:$NASCTIME_ROOT/tests:$NASCTIME_ROOT/simulations"
 RESULTS_DIR="${RESULTS_DIR:-results/hetero}"
 CONFIG="${CONFIG:-Hetero_N5}"
 NETWORK_PREFIX="${NETWORK_PREFIX:-ExtendedMultiEndpointNetwork}"
- 
+
+if [ ! -d "$SIMU5G_SRC" ]; then
+    echo "FAIL: Simu5G src not found at $SIMU5G_SRC (override with SIMU5G_SRC=...)"
+    exit 1
+fi
+if [ ! -d "$INET_SRC" ]; then
+    echo "FAIL: INET src not found at $INET_SRC (override with INET_SRC=...)"
+    exit 1
+fi
+if [ ! -f "$NASCTIME_SRC/libnasctime.so" ]; then
+    echo "FAIL: libnasctime.so not found at $NASCTIME_SRC (build nascTime first: cd $NASCTIME_ROOT && make)"
+    exit 1
+fi
+
+cd "$SCENARIO_DIR"
+export LD_LIBRARY_PATH="$NASCTIME_SRC:${LD_LIBRARY_PATH:-}"
+
 echo "==> MS1 smoke test"
-echo "    CONFIG      = $CONFIG"
-echo "    RESULTS_DIR = $RESULTS_DIR"
-echo "    NETWORK     = $NETWORK_PREFIX"
+echo "    SCENARIO_DIR = $SCENARIO_DIR"
+echo "    CONFIG       = $CONFIG"
+echo "    RESULTS_DIR  = $RESULTS_DIR"
+echo "    NETWORK      = $NETWORK_PREFIX"
 echo ""
 
 # ----------------------------------------------------------------------------
@@ -51,12 +79,9 @@ for n in 1 5 10 15 20; do
     echo "    N=$n: $apps app entries in $f"
 done
 
-# Sanity check: N=5 should have:
-#   2 CLC × 1 flow + 2 MV × 2 flows + 1 BLK × 1 flow = 7 generators + 1 sink = 8
 n5_apps=$(grep -c "tsnDeviceA.app\[" profiles/profiles_N5.ini)
 if [ "$n5_apps" -lt "$((8 * 7))" ]; then
     echo "    Expected at least 56 app config lines for N=5, got $n5_apps"
-    # Note: each app has ~7 config lines (typename, dest, port, etc.)
 fi
 
 # ----------------------------------------------------------------------------
@@ -66,13 +91,14 @@ echo ""
 echo "==> Step 3: running $CONFIG"
 
 rm -rf "$RESULTS_DIR"
- 
+
 if ! opp_run -u Cmdenv \
     -c "$CONFIG" \
     -f ex_multi_omnetpp.ini \
-    -n "../../../../simulations:${SIMU5G_DIR}:${INET_DIR}" \
-    -l "${SIMU5G_DIR}/simu5g" \
-    -l "${INET_DIR}/INET" \
+    -n "${NED_ROOTS}:${SIMU5G_SRC}:${INET_SRC}" \
+    -l nasctime \
+    -l "${SIMU5G_SRC}/simu5g" \
+    -l "${INET_SRC}/INET" \
     > ms1_smoke.log 2>&1; then
     echo "    FAIL: opp_run exited with non-zero status"
     echo "    See ms1_smoke.log for details"
@@ -91,16 +117,13 @@ if [ -z "$SCA_FILE" ] || [ ! -f "$SCA_FILE" ]; then
     exit 1
 fi
 echo "    Found: $SCA_FILE"
- 
+
 # ----------------------------------------------------------------------------
 # Step 5: extract packet counts
 # ----------------------------------------------------------------------------
 echo ""
 echo "==> Step 5: extracting packet counts from .sca"
- 
-# Helper: grep a scalar line and print its value.
-# OMNeT++ .sca format: scalar <module> <name> <value>
-# Module names may contain brackets; we grep as a literal prefix match.
+
 sca_get() {
     local module="$1"
     local name="$2"
@@ -108,8 +131,7 @@ sca_get() {
         $1 == "scalar" && $2 == m && $3 == n { print $4; exit }
     ' "$SCA_FILE"
 }
- 
-# Per-endpoint Device B sink counts
+
 declare -A RX
 for ep in 0 1 2 3 4; do
     for app in 0 1 2; do
@@ -120,10 +142,9 @@ for ep in 0 1 2 3 4; do
         fi
     done
 done
- 
-# Device A reverse sink (fixed at app[7] for N=5)
+
 REV=$(sca_get "${NETWORK_PREFIX}.tsnDeviceA.app[7]" "packetReceived:count")
- 
+
 echo ""
 echo "    Endpoint 0 (CLC):  app[0]=${RX[0.0]:-MISSING}"
 echo "    Endpoint 1 (CLC):  app[0]=${RX[1.0]:-MISSING}"
@@ -131,15 +152,15 @@ echo "    Endpoint 2 (MV):   app[0]=${RX[2.0]:-MISSING}  app[1]=${RX[2.1]:-MISSI
 echo "    Endpoint 3 (MV):   app[0]=${RX[3.0]:-MISSING}  app[1]=${RX[3.1]:-MISSING}"
 echo "    Endpoint 4 (BLK):  app[0]=${RX[4.0]:-MISSING}"
 echo "    Device A reverse:  ${REV:-MISSING}"
- 
+
 # ----------------------------------------------------------------------------
 # Step 6: pass/fail check
 # ----------------------------------------------------------------------------
 echo ""
 echo "==> Step 6: pass/fail check"
- 
+
 PASS=true
- 
+
 check_ge() {
     local label="$1"
     local value="$2"
@@ -154,8 +175,7 @@ check_ge() {
         printf "    %-28s PASS (%s)\n" "$label" "$value"
     fi
 }
- 
-# Expected values for a 10s run with 1s warmup (~9s effective)
+
 check_ge "Endpoint 0 CLC HP"     "${RX[0.0]:-}"  9000
 check_ge "Endpoint 1 CLC HP"     "${RX[1.0]:-}"  9000
 check_ge "Endpoint 2 MV HP"      "${RX[2.0]:-}"  1800
@@ -164,7 +184,7 @@ check_ge "Endpoint 3 MV HP"      "${RX[3.0]:-}"  1800
 check_ge "Endpoint 3 MV BE"      "${RX[3.1]:-}"  4000
 check_ge "Endpoint 4 BLK"        "${RX[4.0]:-}"  800
 check_ge "Device A reverse"      "${REV:-}"      3500
- 
+
 if $PASS; then
     echo ""
     echo "==> MS1 SMOKE TEST PASSED"
@@ -177,4 +197,3 @@ else
     grep "packetReceived:count" "$SCA_FILE" | head -20
     exit 1
 fi
- 

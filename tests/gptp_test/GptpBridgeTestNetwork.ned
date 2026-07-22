@@ -1,6 +1,6 @@
 
 
-package nasctime.simulations.nascTime_tests.gptp_test;
+package nasctime.tests.gptp_test;
 
 import nasctime.nodes.NwTt.NwTt;
 import nasctime.nodes.NwTt.GptpSideband;

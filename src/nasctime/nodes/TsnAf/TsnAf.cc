@@ -9,7 +9,7 @@
 // and cannot be removed from it.
 //
 
-#include "../../nodes/TsnAf/TsnAf.h"
+#include "nasctime/nodes/TsnAf/TsnAf.h"
 
 #include <inet/common/XMLUtils.h>
 

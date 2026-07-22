@@ -9,12 +9,12 @@
 // and cannot be removed from it.
 //
 
-#include "../../nodes/NwTt/NwTtTranslator.h"
+#include "nasctime/nodes/NwTt/NwTtTranslator.h"
 
 #include <omnetpp/cvaluearray.h>
 #include <omnetpp/cvaluemap.h>
 
-#include "../../nodes/NwTt/GptpResidenceHeader_m.h"
+#include "nasctime/nodes/NwTt/GptpResidenceHeader_m.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/packet/chunk/BytesChunk.h"

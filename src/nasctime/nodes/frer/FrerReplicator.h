@@ -16,7 +16,7 @@
 #include <map>
 #include <set>
 
-#include "../../nodes/frer/IFrerTransportBinding.h"
+#include "nasctime/nodes/frer/IFrerTransportBinding.h"
 #include "inet/common/packet/Packet.h"
 #include "inet/common/InitStages.h"
 

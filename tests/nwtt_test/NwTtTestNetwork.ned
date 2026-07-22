@@ -8,7 +8,7 @@
 //   TsnDevice ──Eth1G──► TsnSwitch ──Eth1G──► NwTt ──Eth10G──► UPF ──Eth10G──► gNB ~~NR~~► UE
 //
 
-package nasctime.simulations.nascTime_tests.nwtt_test;
+package nasctime.tests.nwtt_test;
 
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.networklayer.ipv4.RoutingTableRecorder;

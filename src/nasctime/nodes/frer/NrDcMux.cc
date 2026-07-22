@@ -9,7 +9,7 @@
 // and cannot be removed from it.
 //
 
-#include "NrDcMux.h"
+#include "nasctime/nodes/frer/NrDcMux.h"
 
 Define_Module(NrDcMux);
 

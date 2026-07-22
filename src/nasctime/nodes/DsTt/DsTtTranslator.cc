@@ -9,9 +9,9 @@
 // and cannot be removed from it.
 //
 
-#include "DsTtTranslator.h"
+#include "nasctime/nodes/DsTt/DsTtTranslator.h"
 
-#include "../NwTt/GptpResidenceHeader_m.h"
+#include "nasctime/nodes/NwTt/GptpResidenceHeader_m.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/linklayer/common/MacAddressTag_m.h"
 #include "inet/linklayer/ethernet/common/EthernetMacHeader_m.h"

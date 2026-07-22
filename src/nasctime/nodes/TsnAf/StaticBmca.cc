@@ -9,7 +9,7 @@
 // and cannot be removed from it.
 //
 
-#include "../../nodes/TsnAf/StaticBmca.h"
+#include "nasctime/nodes/TsnAf/StaticBmca.h"
 
 Define_Module(StaticBmca);
 

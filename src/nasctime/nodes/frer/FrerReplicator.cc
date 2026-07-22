@@ -9,9 +9,9 @@
 // and cannot be removed from it.
 //
 
-#include "../../nodes/frer/FrerReplicator.h"
+#include "nasctime/nodes/frer/FrerReplicator.h"
 
-#include "../../nodes/frer/FrerSequenceHeader_m.h"
+#include "nasctime/nodes/frer/FrerSequenceHeader_m.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/ProtocolUtils.h"

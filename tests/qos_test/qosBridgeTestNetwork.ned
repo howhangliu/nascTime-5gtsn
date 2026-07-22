@@ -1,6 +1,6 @@
 
 
-package nasctime.simulations.nascTime_tests.qos_test;
+package nasctime.tests.qos_test;
 
 import nasctime.nodes.NwTt.NwTt;
 import nasctime.nodes.NwTt.GptpSideband;

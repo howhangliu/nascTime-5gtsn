@@ -9,7 +9,7 @@
 // and cannot be removed from it.
 //
 
-#include "../../nodes/NwTt/GptpSideband.h"
+#include "nasctime/nodes/NwTt/GptpSideband.h"
 
 Define_Module(GptpSideband);
 
