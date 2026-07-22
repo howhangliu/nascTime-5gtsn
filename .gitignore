@@ -32,3 +32,11 @@ Makefile.inc
 
 # Simulation results
 results/
+
+# opp_msgc-generated files (from .msg sources)
+*_m.h
+*_m.cc
+
+# bin/ now holds real scripts (run, etc.) -- un-ignore
+!bin/
+!bin/**
