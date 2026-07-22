@@ -3,13 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// DsTtTranslator.h — Device-side TSN Translator
-//
-// 5G-TSN bridge support (3GPP TS 23.501 §5.28.4)
-//
-// G1: Simple L2 frame forwarder between two Ethernet ports.
-// Frames arriving from the TSN side are forwarded to the UE side and vice versa.
-// MAC headers are preserved — this is a transparent bridge.
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #ifndef __NASCTIME_DSTTTRANSLATOR_H_

@@ -3,18 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerReplicator.cc — IEEE 802.1CB stream splitting module
-//
-// Hybrid sequence number encoding:
-//   PRIMARY:   FrerSequenceHeader (R-TAG) inserted at packet back
-//              — standards-compliant, carries streamId + sequenceNumber
-//   SECONDARY: IPv4 Identification field set to same sequence number
-//              — fallback for IP fragments or detection failures
-//
-// MTU guard: replication is skipped (with warning) if adding the 4-byte
-// R-TAG would push the IP datagram over 1500 bytes, preventing IP
-// fragmentation.  FRER-eligible flows should be sized so that
-// payload + IP(20) + UDP(8) + R-TAG(4) <= 1500 (max payload = 1468 B).
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #include "../../nodes/frer/FrerReplicator.h"

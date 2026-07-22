@@ -3,30 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// DsTt — Device-side TSN Translator compound module
-//
-// 3GPP TS 23.501 §5.28.4: the DS-TT is the egress bridge port of the
-// 5G system when acting as a TSN bridge.
-//
-// Architecture: a simple two-port Ethernet bridge.
-//   - tsnEthg: Ethernet port facing TSN Device B (or TSN switch)
-//   - ueEthg: Ethernet port facing the UE's eth[0] interface
-//   - DsTtTranslator: forwards frames between the two ports
-//
-// For G1, this is a transparent L2 forwarder. The translator simply
-// passes frames from one port to the other, preserving MAC headers.
-//
-// Topology:
-//   TsnDeviceB.ethg++ <--> Eth1G <--> dsTt.tsnEthg
-//   dsTt.ueEthg <--> Eth1G <--> ue[0].ethg++
-//
-// FRER extension (IEEE 802.1CB):
-//   When frerEnabled=true, a FrerRecovery submodule is conditionally
-//   instantiated between the ueLi dispatcher and DsTtTranslator.ueIn.
-//   It intercepts packets arriving from the UE, applies the Vector
-//   Recovery Algorithm, and drops duplicates before they reach the
-//   translator.  When frerEnabled=false (default), the original
-//   direct wiring is preserved — zero overhead.
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 package nasctime.nodes.DsTt;

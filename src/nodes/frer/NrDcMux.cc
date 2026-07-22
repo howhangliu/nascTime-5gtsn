@@ -1,11 +1,14 @@
+////
+//                  nascTime
 //
-// DcMux — bidirectional multiplexer for NR-DC UE NIC.
+// Authors: Mohamed Seliem (University College Cork)
 //
-// Downlink: packets from either NR stack (primary or secondary)
-//           are forwarded to ip2nic (upper).
-// Uplink:   packets from ip2nic are forwarded to the primary
-//           NR stack only (secondary is receive-only for FRER).
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
+
 #include "NrDcMux.h"
 
 Define_Module(NrDcMux);

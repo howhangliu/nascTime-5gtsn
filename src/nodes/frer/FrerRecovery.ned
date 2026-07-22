@@ -3,16 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerRecovery — IEEE 802.1CB sequence recovery + individual recovery
-//
-// Standalone simple module implementing the Vector Recovery Algorithm
-// (802.1CB §7.5, Annex C) and individual recovery / duplicate
-// elimination (802.1CB §10.4).
-//
-// Placed between the ueLi MessageDispatcher and DsTtTranslator.ueIn
-// in the DsTt compound module.  When frerEnabled=false in the compound
-// module, this submodule is not instantiated and the original wiring
-// is preserved.
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 package nasctime.nodes.frer;

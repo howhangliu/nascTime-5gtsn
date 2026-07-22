@@ -3,15 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerReplicator — IEEE 802.1CB stream splitting module
-//
-// Standalone simple module implementing 802.1CB stream identification (§6),
-// sequence generation (§7.4), and stream splitting (§7.7).
-//
-// Placed between NwTtTranslator.ipForwardOut and the nl MessageDispatcher
-// in the NwTt compound module.  When frerEnabled=false in the compound
-// module, this submodule is not instantiated and the original wiring is
-// preserved.
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 package nasctime.nodes.frer;

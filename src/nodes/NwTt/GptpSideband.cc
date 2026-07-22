@@ -3,6 +3,11 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
+//
 
 #include "../../nodes/NwTt/GptpSideband.h"
 

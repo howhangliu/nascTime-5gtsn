@@ -1,12 +1,14 @@
 //
-// nascGNodeB: extends Simu5G's gNodeB with a second PPP path to a second
-// gateway (UPF), enabling FRER inter-session transport diversity.
+//                  nascTime
 //
-// Mirrors the single-ppp/pppIf/gtpUser/trafficFlowFilter block in
-// simu5g.nodes.eNodeB (confirmed against v1.5.0 source), duplicated for a
-// second session. NOT a core patch — no Simu5G file is modified; this is a
-// pure subclass living in nascTime's own tree.
+// Authors: Mohamed Seliem (University College Cork)
 //
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
+//
+
 package nasctime.nodes;
 
 import simu5g.nodes.gNodeB;

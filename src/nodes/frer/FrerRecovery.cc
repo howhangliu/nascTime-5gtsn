@@ -3,22 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerRecovery.cc — IEEE 802.1CB sequence recovery + duplicate elimination
-//
-// Hybrid sequence number decoding:
-//   PRIMARY:   FrerSequenceHeader (R-TAG) at packet back — used for
-//              non-fragmented packets where the R-TAG is intact.
-//   FALLBACK:  IPv4 Identification field — used when the R-TAG cannot
-//              be detected (IP fragments, non-replicated packets).
-//
-// Detection: peekAtBack<Chunk>(4B) + dynamicPtrCast<FrerSequenceHeader>.
-// If the cast succeeds, the R-TAG is present and used. If it fails,
-// the IPv4 Identification field is used. No exceptions, no crashes.
-//
-// Fragment handling: all fragments of the same IP datagram share the
-// same IPv4 Identification. The DSCP-aware recovery bitmap ensures
-// all fragments of the accepted copy pass through, while fragments
-// of the duplicate copy are dropped.
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #include "../../nodes/frer/FrerRecovery.h"

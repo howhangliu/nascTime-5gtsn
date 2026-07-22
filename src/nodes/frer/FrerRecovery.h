@@ -3,12 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerRecovery.h — IEEE 802.1CB sequence recovery + duplicate elimination
-//
-// Uses IPv4 Identification field as the sequence number (matching
-// FrerReplicator).  Tracks which DSCP copy was accepted for each
-// sequence number, correctly handling IP fragments (all fragments of
-// the same datagram share the same Identification value).
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #ifndef __SIMU5G_1_4_3_FRER_FRERRECOVERY_H_

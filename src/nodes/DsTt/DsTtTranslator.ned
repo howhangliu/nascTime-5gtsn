@@ -3,16 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// DsTtTranslator — Device-side TSN Translator
-//
-// 3GPP TS 23.501 §5.28.4: the DS-TT is the egress bridge port of the
-// 5G system when acting as a TSN bridge. It sits at the UE side.
-//
-// For G1: simple L2 frame forwarder between two Ethernet ports.
-// Future extensions:
-//   G2: gPTP sync message handling (ethertype 0x88F7 interception)
-//   G3: Residence time egress stamping + correctionField update
-//   G4: QFI → PCP mapping on egress frames
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 

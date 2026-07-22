@@ -3,15 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerSequenceHeader.msg — IEEE 802.1CB R-TAG simulation equivalent
-//
-// Lightweight 4-byte header carrying a stream identifier and a per-stream
-// sequence number.  Functionally equivalent to the 802.1CB R-TAG
-// (EtherType 0xF1C1) but encoded as an INET FieldsChunk so that it can
-// be inserted at the back of any Packet and survive GTP-U tunnel transit.
-//
-// Inserted by FrerReplicator (NW-TT side), stripped by FrerRecovery
-// (DS-TT side).
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 cplusplus {{

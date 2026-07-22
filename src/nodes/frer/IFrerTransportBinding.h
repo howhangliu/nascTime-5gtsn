@@ -3,17 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// IFrerTransportBinding.h — Pluggable transport abstraction for FRER
-//
-// Defines how replicated member streams are mapped onto 5G transport
-// paths.  The interface is intentionally minimal: prepareMemberStreams()
-// receives the primary and replica Packets and must configure each one
-// so that the downstream 5G stack routes them to different paths.
-//
-// Concrete implementations:
-//   DrbTransportBinding          — Phase 1 (intra-PDU-session, multiple DRBs)
-//   PduSessionTransportBinding   — stub (inter-PDU-session, same gNB)
-//   DualConnTransportBinding     — stub (inter-PDU-session, dual gNBs)
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #ifndef __SIMU5G_1_4_3_FRER_IFRERTRANSPORTBINDING_H_

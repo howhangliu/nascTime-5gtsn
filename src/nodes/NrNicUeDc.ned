@@ -3,43 +3,12 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// NrNicUeDC — UE NIC with genuine NR-NR Dual Connectivity for FRER
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
-// Extends NrNicUe with a second, fully independent NR leg (PHY/MAC/RLC/
-// PDCP/SDAP) for FRER transport diversity across two distinct gNBs. Unlike
-// Simu5G's native EN-DC (LTE anchor + NR secondary, built into NrNicUe's
-// own inherited LteNicUeD2D base), this is NR+NR -- both legs are NrPhyUe
-// instances, paired via a third HandoverController instance rather than
-// the native LTE<->NR pairing.
-//
-// Design confirmed via direct reading of v1.5.0 source, not inferred:
-//   - Binder::registerDcSecondary/getDcSecondaryNextHop -- ported from
-//     v1.4.1-sdap-2, non-destructive w.r.t. servingNode_.
-//   - HandoverController::isDcSecondary_ -- guards the three Binder
-//     registration call sites so the secondary leg's attach/detach never
-//     clobbers the primary's slot. beaconReceived()/triggerHandover()/
-//     deleteOldBuffers() confirmed already generic, no changes needed.
-//   - Rrc.ned: hasNrHandoverController2 gates the third HandoverController
-//     instance -- MUST be declared inside Rrc itself (HandoverController
-//     finds bearerManagement_ via getParentModule()), so this NIC can only
-//     enable it via the rrc.hasNrHandoverController2 parameter, not inject
-//     a submodule from outside.
-//   - LtePhyUe.ned: handoverControllerModule is a plain NED string param
-//     (default "^.rrc.handoverController"), confirmed via
-//     grep -- nrPhy2.handoverControllerModule below overrides it to pair
-//     with nrHandoverController2 instead. No C++ patch needed for this.
-//   - BearerManagement.dcSecondaryDrbIds (set in the ini, not here) routes
-//     DRB 4 (FRER replica) to nrRlcMux2/nrMac2/pdcpMux2.
-//   - LtePhyEnb::handleAirFrame() / LtePhyBase::getReceiverGateIndex() --
-//     gNB-side patches, not reflected in this file.
-//
-// STATUS: NED wiring complete and internally consistent as of this
-// session. OPEN, NOT YET SOLVED: nothing here (or anywhere else in the
-// design) forces nrPhy2/nrHandoverController2 to attach specifically to
-// a UE's registered DC-secondary gNB rather than any available NR cell --
-// see FRER_DC_design_state.md's "New gap" section. Do not trust
-// dual-connectivity attach behavior until that's resolved.
-//
+
 package nasctime.nodes;
 
 import simu5g.stack.NrNicUe;

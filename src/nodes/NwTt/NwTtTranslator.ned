@@ -3,25 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// NwTtTranslator — Network-side TSN Translator (3GPP TS 23.501 §5.28.3)
-//
-// Translates between Ethernet frames (TSN domain, L2) and IP/UDP datagrams
-// (5G core, L3) at the ingress of the 5G system's TSN bridge model.
-//
-// Ingress (TSN → 5GS):
-//   Receives Ethernet payload from LayeredEthernetInterface (MAC header already
-//   stripped), serialises it as raw BytesChunk inside a UDP datagram addressed
-//   to the UE, and sends it toward the UPF's TrafficFlowFilter → GtpUser pipeline.
-//
-// Egress (5GS → TSN):
-//   Receives UDP datagram from UPF (GTP-U decapsulated), extracts the TSN payload,
-//   reconstructs an Ethernet frame with configured MAC addresses, and sends it
-//   toward the TSN switch via LayeredEthernetInterface.
-//
-// Future extensions (subsequent gaps in the implementation plan):
-//   - G2: GptpTunnelHandler submodule for 802.1AS sync message interception
-//   - G3: Residence time stamping via IClock at ingress for transparent clock
-//   - G4: QoS translation (PCP ↔ QFI) via QosTranslator submodule
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 package nasctime.nodes.NwTt;

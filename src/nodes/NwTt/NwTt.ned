@@ -3,27 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// NwTt — Network-side TSN Translator compound module
-//
-// 3GPP TS 23.501 §5.28.3: the NW-TT is the ingress bridge port of the
-// 5G system when it acts as a logical IEEE 802.1AS-compliant TSN bridge.
-// It connects the external TSN network (via Ethernet) to the UPF (via IP/PPP).
-//
-// Placement in topology:
-//   TsnSwitch.ethg <--> Eth1G <--> nwTt.ethg
-//   nwTt.filterGate <--> Eth10G <--> upf.filterGate
-//
-// Note: the gate facing the UPF is named "filterGate" (not "pppg") to match
-// the Simu5G convention used by Upf.ned and PgwStandard.ned, making it a
-// drop-in replacement for the external router in standard topologies.
-//
-// FRER extension (IEEE 802.1CB):
-//   When frerEnabled=true, a FrerReplicator submodule is conditionally
-//   instantiated and wired between the translator's ipForwardOut gate
-//   and the nl dispatcher.  When frerEnabled=false (default), the
-//   original direct wiring is preserved — zero overhead.
-//
-//   frerInterSession  — adds pppIf2 for inter-PDU-session / NR-DC bindings
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 package nasctime.nodes.NwTt;

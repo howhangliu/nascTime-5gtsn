@@ -3,10 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// FrerReplicator.h — IEEE 802.1CB stream splitting module
-//
-// Implements stream identification (§6), sequence generation (§7.4),
-// and stream splitting / replication (§7.7) as a standalone cSimpleModule.
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #ifndef __SIMU5G_1_4_3_FRER_FRERREPLICATOR_H_

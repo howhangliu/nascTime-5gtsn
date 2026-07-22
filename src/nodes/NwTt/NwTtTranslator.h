@@ -3,9 +3,10 @@
 //
 // Authors: Mohamed Seliem (University College Cork)
 //
-// NwTtTranslator.h — Network-side TSN Translator
-//
-// 5G-TSN bridge support (3GPP TS 23.501 §5.28.3)
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
 //
 
 #ifndef __SIMU5G_1_4_3_NWTTTRANSLATOR_H_
