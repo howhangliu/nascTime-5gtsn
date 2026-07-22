@@ -26,3 +26,9 @@ results/
 *.o
 *.so
 Makefile.inc
+# Build artifacts
+/src/nascTime
+/src/Makefile
+
+# Simulation results
+results/
