@@ -393,43 +393,43 @@ src/nodes/nascTime/NascGNodeB.ned        gNB extension with a second PPP interfa
                                           diversity
 ```
 
-### Simulations (`simulations/nascTime_tests/`)
+### Simulations (`simulations/demos/`) and Tests (`tests/`)
 
 ```
-simulations/nascTime_tests/nwtt_test/            NW-TT only baseline (G1)
+tests/nwtt_test/            NW-TT only baseline (G1)
 ├── NwTtTestNetwork.ned
 ├── omnetpp.ini
 └── nwtt_ip_config.xml
 
-simulations/nascTime_tests/bridge_test/          Full bridge without gPTP (G1)
+tests/bridge_test/          Full bridge without gPTP (G1)
 ├── BridgeTestNetwork.ned
 ├── omnetpp.ini
 └── bridge_ip_config.xml
 
-simulations/nascTime_tests/gptp_test/            Full bridge with gPTP + residence time (G2+G3)
+tests/gptp_test/            Full bridge with gPTP + residence time (G2+G3)
 ├── GptpBridgeTestNetwork.ned
 ├── omnetpp.ini
 └── gptp_bridge_ip_config.xml
 
-simulations/nascTime_tests/qos_test/             QoS + TSN AF + BMCA (G4+G5+G6)
+tests/qos_test/             QoS + TSN AF + BMCA (G4+G5+G6)
 ├── QosBridgeTestNetwork.ned
 ├── omnetpp.ini
 ├── qos_bridge_ip_config.xml
 └── cnc_config.xml
 
-simulations/nascTime_tests/multi_endpoint_test/  Multi-endpoint scaling (S1-S8)
+simulations/demos/multi_endpoint_test/  Multi-endpoint scaling (S1-S8)
 ├── MultiEndpointNetwork.ned
 ├── omnetpp.ini
 ├── multi_ip_config.xml
 └── cnc_config.xml
 
-simulations/nascTime_tests/ext_multiendpoint_test/  Scalability sweep, heterogeneous traffic mix
+simulations/demos/ext_multiendpoint_test/  Scalability sweep, heterogeneous traffic mix
 ├── ExtendedMultiEndpointNetwork.ned
 ├── ex_multi_omnetpp.ini
 ├── gen_profile_ini.py                   Generates per-N traffic profile fragments
 └── profiles/
 
-simulations/nascTime_tests/frer_test/            FRER validation (F1-F4)
+simulations/demos/frer_test/            FRER validation (F1-F4)
 ├── frer_uplink.ini                      Uplink replication/recovery
 ├── frer_intersession.ini                Inter-PDU-session transport diversity
 ├── frer_dualconn.ini                    NR dual-connectivity transport diversity
@@ -594,7 +594,7 @@ and `simu5g` checkouts and add both as **project references**:
 ### Running a scenario
 
 ```bash
-cd nascTime/simulations/nascTime_tests/multi_endpoint_test
+cd nascTime/simulations/demos/multi_endpoint_test
 opp_run -u Cmdenv -c MultiEndpointTest -f omnetpp.ini \
   -n ".:../../../src:<inet>/src:<simu5g>/src" \
   -l ../../../src/nascTime -l <simu5g>/src/simu5g -l <inet>/src/INET
