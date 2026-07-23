@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # run_matrix.sh — Launch the MSWiM 2026 experiment matrix in parallel.
 #

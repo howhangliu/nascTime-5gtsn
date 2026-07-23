@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # nasctime-run — generic wrapper for running any nascTime scenario via
 # opp_run, now that nascTime builds as a shared library (libnasctime.so)

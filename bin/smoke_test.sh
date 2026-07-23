@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # smoke_test.sh — Validate the heterogeneous traffic generator
 #                     end-to-end on a single small scenario.
