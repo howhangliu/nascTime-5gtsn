@@ -1,6 +1,4 @@
-FEATURETOOL = opp_featuretool
-
-.PHONY: all clean cleanall makefiles checkenvir checkmakefiles dist
+.PHONY: all clean cleanall makefiles checkenvir
 
 all: makefiles
 	@cd src && $(MAKE)
@@ -44,17 +42,7 @@ makefiles: checkenvir
 	@$(info *** CREATING Makefile with INET_ROOT=$(INET_ROOT) SIMU5G_ROOT=$(SIMU5G_ROOT))
 	@cd src && opp_makemake -f --deep --make-so -o nasctime \
 		-KINET_PROJ=$(INET_ROOT) -KSIMU5G_PROJ=$(SIMU5G_ROOT) \
-		-DINET_IMPORT \
+		-DINET_IMPORT -DSIMU5G_IMPORT \
 		-I. -I$$\(INET_PROJ\)/src -I$$\(SIMU5G_PROJ\)/src \
 		-L$$\(INET_PROJ\)/src -L$$\(SIMU5G_PROJ\)/src \
 		-lINET$$\(D\) -lsimu5g$$\(D\)
-
-checkmakefiles:
-	@if [ ! -f src/Makefile ]; then \
-	echo; \
-	echo '======================================================================='; \
-	echo 'src/Makefile does not exist. Please use "make makefiles" to generate it!'; \
-	echo '======================================================================='; \
-	echo; \
-	exit 1; \
-	fi
