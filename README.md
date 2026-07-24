@@ -17,10 +17,33 @@ transport-diversity paths.
 
 **Stack:** OMNeT++ 6.3 · INET 4.6.x · Simu5G v1.5.0
 
-nascTime is a standalone OMNeT++ project. It does not require any source
-modifications to Simu5G — it references INET and Simu5G as sibling
-projects and builds against their published module APIs, including
-Simu5G's native SDAP/DRB support.
+nascTime is a standalone OMNeT++ project. Its core TSN/5G bridge
+functionality (NW-TT, DS-TT, QoS mapping, gPTP transparent clock, static
+BMCA, multi-endpoint scaling) builds against **vanilla Simu5G v1.5.0**
+with no source modifications, referencing INET and Simu5G as sibling
+projects.
+
+**IEEE 802.1CB FRER (F1–F4), however, requires [nascTime's Simu5G
+fork](<https://github.com/MohamedSeliem/Simu5G/tree/nasctime-core-patches>)** — tag `nasctime-v1.0` — which adds transport-diversity
+support (dual-connectivity secondary-leg attach, per-DRB leg routing,
+and several upstream bug fixes) that vanilla Simu5G does not have. FRER
+scenarios will not run correctly against unpatched Simu5G. See "Which
+Simu5G do I need?" below for the exact split.
+
+## Which Simu5G do I need?
+
+| You want to run... | Simu5G build |
+|---|---|
+| NW-TT/DS-TT bridge, QoS mapping, gPTP, BMCA, multi-endpoint scaling (`tests/`, `simulations/demos/multi_endpoint_test`, `ext_multiendpoint_test`) | **Vanilla Simu5G v1.5.0** — no changes needed |
+| FRER — any scenario in `simulations/demos/frer_test/` (F1–F4) | **[nascTime's Simu5G fork](<https://github.com/MohamedSeliem/Simu5G/tree/nasctime-core-patches>)**, tag `nasctime-v1.0` |
+
+The fork is a strict superset of vanilla Simu5G v1.5.0 — everything that
+works against vanilla also works against the fork. **If you're setting
+up nascTime for the first time and aren't sure which scenarios you'll
+run, use the fork** to avoid re-building later.
+
+`nasctime-v1.0` on the fork corresponds to `v1.0` on this repo — both
+tags mark the same validated, working state.
 
 **End-to-end path (multi-endpoint):**
 ```
@@ -569,8 +592,10 @@ separately via `mac.drbQosConfig`.
 - INET 4.6.x, built
 - Simu5G v1.5.0, built
 
-No source modifications to Simu5G are required — SDAP/DRB support is
-native to Simu5G v1.5.0.
+SDAP/DRB support is native to Simu5G v1.5.0 and requires no
+modifications for non-FRER scenarios. **If you plan to run any FRER
+scenario** (anything under `simulations/demos/frer_test/`), build
+against [nascTime's Simu5G fork](<https://github.com/MohamedSeliem/Simu5G/tree/nasctime-core-patches>) instead — see "Which Simu5G do I need?" above.
 
 ### Project setup
 
@@ -623,6 +648,10 @@ Adjust the `<inet>`/`<simu5g>` paths to match your local checkout layout.
 5. **FRER NR dual-connectivity transport diversity (F4)** is under active
    development and not yet available for use.
 
+6. **Vanilla Simu5G v1.5.0 is sufficient only for non-FRER features.**
+   Earlier versions of this README incorrectly stated no Simu5G source
+   modifications were required at all — this was wrong for FRER
+   specifically. See "Which Simu5G do I need?" above.
 ---
 
 ## References
