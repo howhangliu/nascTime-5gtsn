@@ -29,7 +29,6 @@ set -euo pipefail
 # not the caller's CWD -- this script can now be run from anywhere.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NASCTIME_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-WORKSPACE_ROOT="$(cd "$NASCTIME_ROOT/.." && pwd)"
 SCENARIO_DIR="$NASCTIME_ROOT/simulations/demos/ext_multiendpoint_test"
 
 JOBS="${JOBS:-4}"
@@ -37,15 +36,15 @@ NASCTIME_SRC="$NASCTIME_ROOT/src"
 NED_ROOTS="$NASCTIME_SRC:$NASCTIME_ROOT/tests:$NASCTIME_ROOT/simulations"
 WHICH="${1:-primary}"
 
-SIMU5G_ROOT="${SIMU5G_ROOT:-$WORKSPACE_ROOT/simu5g-1.5.0}"
-if [ ! -d "$SIMU5G_ROOT/src" ]; then
-    echo "FAIL: Simu5G not found at $SIMU5G_ROOT (override with SIMU5G_ROOT=...)" >&2
+SIMU5G_ROOT="${SIMU5G_ROOT:-}"
+if [ -z "$SIMU5G_ROOT" ] || [ ! -d "$SIMU5G_ROOT/src" ]; then
+    echo "FAIL: SIMU5G_ROOT is not set or does not point to a Simu5G tree (source Simu5G's setenv, or pass SIMU5G_ROOT=...)" >&2
     exit 1
 fi
 
-INET_ROOT="${INET_ROOT:-$WORKSPACE_ROOT/inet-4.6.0}"
-if [ ! -d "$INET_ROOT/src" ]; then
-    echo "FAIL: INET not found at $INET_ROOT (override with INET_ROOT=...)" >&2
+INET_ROOT="${INET_ROOT:-}"
+if [ -z "$INET_ROOT" ] || [ ! -d "$INET_ROOT/src" ]; then
+    echo "FAIL: INET_ROOT is not set or does not point to an INET tree (source INET's setenv, or pass INET_ROOT=...)" >&2
     exit 1
 fi
 if [ ! -f "$NASCTIME_SRC/libnasctime.so" ]; then

@@ -15,7 +15,7 @@
 #   ../../bin/nasctime-run -f omnetpp.ini [any other opp_run args]
 # or from anywhere, via an absolute/relative path to this script.
 #
-# Environment overrides:
+# Required environment (exported by sourcing each project's own setenv):
 #   SIMU5G_ROOT=...   absolute path to Simu5G tree
 #   INET_ROOT=...     absolute path to INET tree
 #
@@ -27,17 +27,15 @@ NASCTIME_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NASCTIME_SRC="$NASCTIME_ROOT/src"
 NED_ROOTS="$NASCTIME_SRC:$NASCTIME_ROOT/tests:$NASCTIME_ROOT/simulations"
 
-WORKSPACE_ROOT="$(cd "$NASCTIME_ROOT/.." && pwd)"
-
-SIMU5G_ROOT="${SIMU5G_ROOT:-$WORKSPACE_ROOT/simu5g-1.5.0}"
-if [ ! -d "$SIMU5G_ROOT/src" ]; then
-    echo "nasctime-run: Simu5G not found at $SIMU5G_ROOT (override with SIMU5G_ROOT=...)" >&2
+SIMU5G_ROOT="${SIMU5G_ROOT:-}"
+if [ -z "$SIMU5G_ROOT" ] || [ ! -d "$SIMU5G_ROOT/src" ]; then
+    echo "nasctime-run: SIMU5G_ROOT is not set or does not point to a Simu5G tree (source Simu5G's setenv, or pass SIMU5G_ROOT=...)" >&2
     exit 1
 fi
 
-INET_ROOT="${INET_ROOT:-$WORKSPACE_ROOT/inet-4.6.0}"
-if [ ! -d "$INET_ROOT/src" ]; then
-    echo "nasctime-run: INET not found at $INET_ROOT (override with INET_ROOT=...)" >&2
+INET_ROOT="${INET_ROOT:-}"
+if [ -z "$INET_ROOT" ] || [ ! -d "$INET_ROOT/src" ]; then
+    echo "nasctime-run: INET_ROOT is not set or does not point to an INET tree (source INET's setenv, or pass INET_ROOT=...)" >&2
     exit 1
 fi
 
