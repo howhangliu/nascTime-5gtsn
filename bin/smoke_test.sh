@@ -25,22 +25,24 @@ NASCTIME_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORKSPACE_ROOT="$(cd "$NASCTIME_ROOT/.." && pwd)"
 SCENARIO_DIR="$NASCTIME_ROOT/simulations/demos/ext_multiendpoint_test"
 
-INET_SRC="${INET_SRC:-$WORKSPACE_ROOT/inet-4.6.0/src}"
-SIMU5G_SRC="${SIMU5G_SRC:-$WORKSPACE_ROOT/simu5g-1.5.0/src}"
+SIMU5G_ROOT="${SIMU5G_ROOT:-$WORKSPACE_ROOT/simu5g-1.5.0}"
+if [ ! -d "$SIMU5G_ROOT/src" ]; then
+    echo "FAIL: Simu5G not found at $SIMU5G_ROOT (override with SIMU5G_ROOT=...)" >&2
+    exit 1
+fi
+
+INET_ROOT="${INET_ROOT:-$WORKSPACE_ROOT/inet-4.6.0}"
+if [ ! -d "$INET_ROOT/src" ]; then
+    echo "FAIL: INET not found at $INET_ROOT (override with INET_ROOT=...)" >&2
+    exit 1
+fi
+
 NASCTIME_SRC="$NASCTIME_ROOT/src"
 NED_ROOTS="$NASCTIME_SRC:$NASCTIME_ROOT/tests:$NASCTIME_ROOT/simulations"
 RESULTS_DIR="${RESULTS_DIR:-results/hetero}"
 CONFIG="${CONFIG:-Hetero_N5}"
 NETWORK_PREFIX="${NETWORK_PREFIX:-ExtendedMultiEndpointNetwork}"
 
-if [ ! -d "$SIMU5G_SRC" ]; then
-    echo "FAIL: Simu5G src not found at $SIMU5G_SRC (override with SIMU5G_SRC=...)"
-    exit 1
-fi
-if [ ! -d "$INET_SRC" ]; then
-    echo "FAIL: INET src not found at $INET_SRC (override with INET_SRC=...)"
-    exit 1
-fi
 if [ ! -f "$NASCTIME_SRC/libnasctime.so" ]; then
     echo "FAIL: libnasctime.so not found at $NASCTIME_SRC (build nascTime first: cd $NASCTIME_ROOT && make)"
     exit 1
@@ -95,10 +97,8 @@ rm -rf "$RESULTS_DIR"
 if ! opp_run -u Cmdenv \
     -c "$CONFIG" \
     -f ex_multi_omnetpp.ini \
-    -n "${NED_ROOTS}:${SIMU5G_SRC}:${INET_SRC}" \
+    -n "${NED_ROOTS}:${SIMU5G_ROOT}/src:${INET_ROOT}/src" \
     -l nasctime \
-    -l "${SIMU5G_SRC}/simu5g" \
-    -l "${INET_SRC}/INET" \
     > ms1_smoke.log 2>&1; then
     echo "    FAIL: opp_run exited with non-zero status"
     echo "    See ms1_smoke.log for details"
