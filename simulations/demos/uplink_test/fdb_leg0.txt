@@ -1,0 +1,8 @@
+# Static forwarding entry for tsnSwitchB, active leg 0.
+#
+# Without this the switch never learns the active UE's MAC — nothing on the
+# talker-side segment ever transmits toward tsnDeviceB — so every uplink frame
+# is flooded out the standby leg as well.
+#
+# vlanId  MAC address        interface
+0         0A-AA-00-00-00-01  eth0

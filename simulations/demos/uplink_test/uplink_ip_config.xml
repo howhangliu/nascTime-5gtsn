@@ -1,0 +1,32 @@
+<config>
+    <!-- Listener side: tsnDeviceA straight onto the NW-TT, no switch -->
+    <interface hosts="tsnDeviceA" address="10.0.0.x" netmask="255.255.255.0"/>
+    <interface hosts="nwTt" names="ethIf" address="10.0.0.x" netmask="255.255.255.0"/>
+
+    <!-- NW-TT to UPF -->
+    <interface hosts="nwTt" names="pppIf" address="10.0.1.x" netmask="255.255.255.0"/>
+    <interface hosts="upf" names="pppIf" address="10.0.1.x" netmask="255.255.255.0"/>
+
+    <!-- UPF to gNB -->
+    <interface hosts="upf" names="ppp0" address="10.0.2.x" netmask="255.255.255.0"/>
+    <interface hosts="gnb" names="pppIf" address="10.0.2.x" netmask="255.255.255.0"/>
+
+    <!-- Cellular -->
+    <interface hosts="gnb" names="cellular" address="10.0.3.x" netmask="255.255.255.0"/>
+    <interface hosts="ue[*]" names="cellular" address="10.0.3.x" netmask="255.255.255.0"/>
+
+    <!-- Talker side. Unlike MultiEndpointNetwork (one /24 per endpoint), the
+         single tsnDeviceB, the switch and both DS-TTs share one broadcast
+         domain, so both UE eth ports live on the same subnet. Which of them
+         is actually a usable next hop is decided by ipv4.forwarding in the
+         .ini, not by addressing. -->
+    <interface hosts="ue[0]" names="eth0" address="192.168.1.1" netmask="255.255.255.0"/>
+    <interface hosts="ue[1]" names="eth0" address="192.168.1.2" netmask="255.255.255.0"/>
+    <interface hosts="tsnDeviceB" address="192.168.1.10" netmask="255.255.255.0"/>
+
+    <!-- DS-TT: transparent L2 relay, no IP -->
+    <interface hosts="dsTt[*]" address="0.0.0.0" netmask="0.0.0.0"/>
+
+    <!-- Catch-all -->
+    <interface hosts="**" address="10.0.x.x" netmask="255.255.255.0"/>
+</config>
