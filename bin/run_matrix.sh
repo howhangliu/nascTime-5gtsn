@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # run_matrix.sh — Launch the MSWiM 2026 experiment matrix in parallel.
 #
@@ -19,8 +19,8 @@
 #
 # Environment overrides:
 #   JOBS=4                number of parallel simulations
-#   SIMU5G_SRC=...        absolute path to Simu5G src tree
-#   INET_SRC=...           absolute path to INET src tree
+#   SIMU5G_ROOT=...       absolute path to Simu5G tree
+#   INET_ROOT=...         absolute path to INET tree
 #
 
 set -euo pipefail
@@ -29,22 +29,22 @@ set -euo pipefail
 # not the caller's CWD -- this script can now be run from anywhere.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NASCTIME_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-WORKSPACE_ROOT="$(cd "$NASCTIME_ROOT/.." && pwd)"
 SCENARIO_DIR="$NASCTIME_ROOT/simulations/demos/ext_multiendpoint_test"
 
 JOBS="${JOBS:-4}"
-SIMU5G_SRC="${SIMU5G_SRC:-$WORKSPACE_ROOT/simu5g-1.5.0/src}"
-INET_SRC="${INET_SRC:-$WORKSPACE_ROOT/inet-4.6.0/src}"
 NASCTIME_SRC="$NASCTIME_ROOT/src"
 NED_ROOTS="$NASCTIME_SRC:$NASCTIME_ROOT/tests:$NASCTIME_ROOT/simulations"
 WHICH="${1:-primary}"
 
-if [ ! -d "$SIMU5G_SRC" ]; then
-    echo "FAIL: Simu5G src not found at $SIMU5G_SRC (override with SIMU5G_SRC=...)"
+SIMU5G_ROOT="${SIMU5G_ROOT:-}"
+if [ -z "$SIMU5G_ROOT" ] || [ ! -d "$SIMU5G_ROOT/src" ]; then
+    echo "FAIL: SIMU5G_ROOT is not set or does not point to a Simu5G tree (source Simu5G's setenv, or pass SIMU5G_ROOT=...)" >&2
     exit 1
 fi
-if [ ! -d "$INET_SRC" ]; then
-    echo "FAIL: INET src not found at $INET_SRC (override with INET_SRC=...)"
+
+INET_ROOT="${INET_ROOT:-}"
+if [ -z "$INET_ROOT" ] || [ ! -d "$INET_ROOT/src" ]; then
+    echo "FAIL: INET_ROOT is not set or does not point to an INET tree (source INET's setenv, or pass INET_ROOT=...)" >&2
     exit 1
 fi
 if [ ! -f "$NASCTIME_SRC/libnasctime.so" ]; then
@@ -180,10 +180,8 @@ run_cell() {
         -c "$config" \
         -r "$runnum" \
         -f omnetpp_sweep.ini \
-        -n "${NED_ROOTS}:${SIMU5G_SRC}:${INET_SRC}" \
+        -n "${NED_ROOTS}:${SIMU5G_ROOT}/src:${INET_ROOT}/src" \
         -l nasctime \
-        -l "${SIMU5G_SRC}/simu5g" \
-        -l "${INET_SRC}/INET" \
         > "${resdir}/${tag}.stdout" 2>&1
     then
         local elapsed=$(( $(date +%s) - start ))
@@ -194,7 +192,7 @@ run_cell() {
     fi
 }
 export -f run_cell sched_for_run_5 sched_for_run_fade rep_for_run fade_for_run
-export SIMU5G_SRC INET_SRC NED_ROOTS
+export SIMU5G_ROOT INET_ROOT NED_ROOTS
 
 # ----------------------------------------------------------------------------
 # Dispatch
@@ -220,8 +218,8 @@ TOTAL=$($ENUM | wc -l)
 echo "==> Dispatching $TOTAL $WHICH cells with $JOBS parallel workers"
 echo "    SCENARIO_DIR = $SCENARIO_DIR"
 echo "    NED_ROOTS    = $NED_ROOTS"
-echo "    SIMU5G_SRC   = $SIMU5G_SRC"
-echo "    INET_SRC     = $INET_SRC"
+echo "    SIMU5G_ROOT  = $SIMU5G_ROOT"
+echo "    INET_ROOT    = $INET_ROOT"
 echo ""
 
 $ENUM | parallel --jobs "$JOBS" --colsep ' ' --line-buffer \

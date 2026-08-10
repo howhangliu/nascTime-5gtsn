@@ -15,16 +15,16 @@ with streaming PHY for TSN feature compatibility, and IEEE 802.1CB Frame
 Replication and Elimination for Reliability (FRER) across configurable
 transport-diversity paths.
 
-**Stack:** OMNeT++ 6.3 · INET 4.6.x · Simu5G v1.5.0
+**Stack:** OMNeT++ 6.4 · INET 4.6.x · Simu5G v1.5.0
 
 nascTime is a standalone OMNeT++ project. Its core TSN/5G bridge
 functionality (NW-TT, DS-TT, QoS mapping, gPTP transparent clock, static
 BMCA, multi-endpoint scaling) builds against **vanilla Simu5G v1.5.0**
-with no source modifications, referencing INET and Simu5G as sibling
-projects.
+with no source modifications, locating INET and Simu5G through the
+`INET_ROOT` and `SIMU5G_ROOT` environment variables.
 
 **IEEE 802.1CB FRER (F1–F4), however, requires [nascTime's Simu5G
-fork](<https://github.com/MohamedSeliem/Simu5G/tree/nasctime-core-patches>)** — tag `nasctime-v1.0` — which adds transport-diversity
+fork](https://github.com/MohamedSeliem/Simu5G/tree/nasctime-v1.0)** — tag `nasctime-v1.0` — which adds transport-diversity
 support (dual-connectivity secondary-leg attach, per-DRB leg routing,
 and several upstream bug fixes) that vanilla Simu5G does not have. FRER
 scenarios will not run correctly against unpatched Simu5G. See "Which
@@ -35,7 +35,7 @@ Simu5G do I need?" below for the exact split.
 | You want to run... | Simu5G build |
 |---|---|
 | NW-TT/DS-TT bridge, QoS mapping, gPTP, BMCA, multi-endpoint scaling (`tests/`, `simulations/demos/multi_endpoint_test`, `ext_multiendpoint_test`) | **Vanilla Simu5G v1.5.0** — no changes needed |
-| FRER — any scenario in `simulations/demos/frer_test/` (F1–F4) | **[nascTime's Simu5G fork](<https://github.com/MohamedSeliem/Simu5G/tree/nasctime-core-patches>)**, tag `nasctime-v1.0` |
+| FRER — any scenario in `simulations/demos/frer_test/` (F1–F4), and therefore a full `make tests` run | **[nascTime's Simu5G fork](https://github.com/MohamedSeliem/Simu5G/tree/nasctime-v1.0)**, tag `nasctime-v1.0` |
 
 The fork is a strict superset of vanilla Simu5G v1.5.0 — everything that
 works against vanilla also works against the fork. **If you're setting
@@ -68,10 +68,13 @@ TSN Device A → TsnSwitch → NW-TT → UPF → gNB ────   UE[1] → DS
 - Static BMCA: 6-node hierarchy validated, 0 errors
 - All bridge ports use LayeredEthernetInterface with EthernetStreamingPhyLayer
 
-Figures above were measured on the Simu5G v1.4.1-sdap-2 stack referenced in
-the paper below. The same scenario has since been confirmed to run cleanly
-on Simu5G v1.5.0 with consistent delivery behavior; the v1.5.0 build is now
-the primary supported target for this repository.
+Figures above were measured on the legacy Simu5G v1.4.1-sdap-2 stack
+referenced in the paper below, which this repository no longer targets or
+supports. The same scenario has since been confirmed to run cleanly on
+Simu5G v1.5.0 with consistent delivery behavior; v1.5.0 is the primary
+supported target. Exact per-endpoint counts on v1.5.0 may differ — for
+reproducible, version-pinned numbers use the fingerprint baselines in
+`tests/fingerprint/simulations.csv` rather than this table.
 
 ---
 
@@ -195,6 +198,12 @@ TSN Switch ◄──►    │                               │
 - PCP→DSCP translation is configurable via `mappedPcpValues` (default maps
   all PCP 0–7)
 
+The diagram shows the base configuration. `NwTt` additionally contains a
+`udp` module, and three conditional submodules omitted above: `frerReplicator`
+(spliced into the downlink path when `frerEnabled`), `frerRecoveryUl`
+(spliced into the uplink egress path when `frerUplinkEnabled`), and `pppIf2`
+(a second N3 link when `frerInterSession`). See the FRER section below.
+
 ### DS-TT (Device-side TSN Translator)
 
 **Module:** `DsTt` (standalone two-port L2 bridge)
@@ -237,6 +246,11 @@ UE ◄──►    │                                  │
 - `DispatchProtocolReq` + `DirectionTag` set on outgoing packets
 - FCS value `0xC00DC00D` for `LayeredEthernetInterface` compatibility
 - `registerProtocol(Protocol::ethernetMac)` on both gate pairs
+
+As with `NwTt`, the diagram shows the base configuration: `DsTt` also holds
+an `interfaceTable` and two conditional submodules on the UE-facing path —
+`frerRecovery` (when `frerEnabled`) and `frerReplicatorUl` (when
+`frerUplinkEnabled`).
 
 ### TSN AF (Application Function)
 
@@ -348,8 +362,22 @@ replica is made physically or logically distinct from the primary:
 | `pduSession` | Independent N3 path, same gNB | Independent PDCP/RLC + independent core-network path |
 | `dualConnectivity` | Independent N3 path, independent gNB | Full radio-path diversity — uncorrelated radio-level failures |
 
-Key parameters (set on `nwTt.frerReplicator`/`dsTt[*].frerRecovery` or
-their uplink counterparts):
+**Module names per direction.** Each direction has its own replicator and
+recovery submodule, gated by a separate boolean on the enclosing node.
+Setting the wrong pair silently leaves that direction unreplicated:
+
+| Direction | Replicator | Recovery | Gating parameters |
+|---|---|---|---|
+| Downlink (network → device) | `nwTt.frerReplicator` | `dsTt[*].frerRecovery` | `nwTt.frerEnabled`, `dsTt[*].frerEnabled` |
+| Uplink (device → network) | `dsTt[*].frerReplicatorUl` | `nwTt.frerRecoveryUl` | `dsTt[*].frerUplinkEnabled`, `nwTt.frerUplinkEnabled` |
+
+A third parameter, `frerInterSession`, instantiates the second PPP interface
+(`pppIf2` on `NwTt`, `ppp2` on `NGNodeB`) that the path-diverse bindings route
+the replica through. `ExtendedMultiEndpointNetwork` carries it as a
+network-level parameter too, where it also gates the second UPF; the
+companion `frerDualConn` gates the second gNB.
+
+**Downlink:**
 
 ```ini
 *.nwTt.frerEnabled = true
@@ -358,108 +386,172 @@ their uplink counterparts):
 *.nwTt.frerReplicator.transportBinding = "drb" # "drb" | "pduSession" | "dualConnectivity"
 
 *.dsTt[*].frerEnabled = true
-*.dsTt[*].frerRecovery.frerStreams = "7"
-*.dsTt[*].frerRecovery.replicaDscp = 8
-*.dsTt[*].frerRecovery.windowSize = 64
-*.dsTt[*].frerRecovery.windowTimeout = 0.1s
+*.dsTt[*].frerRecovery.frerStreams = "7"       # must match the replicator
+*.dsTt[*].frerRecovery.replicaDscp = 8         # must match the replicator
+*.dsTt[*].frerRecovery.windowSize = 64         # IEEE 802.1CB Annex C recommends 64
+*.dsTt[*].frerRecovery.windowTimeout = 0.1s    # resets stale recovery state when idle
 ```
 
-For `pduSession` and `dualConnectivity` bindings, also set
-`replicaInterface` to the name of the secondary PPP interface (see
-`NascGNodeB` below) and configure a second UPF (and, for
-`dualConnectivity`, a second gNB) in your topology.
+**Uplink** (as in `simulations/demos/frer_test/frer_uplink.ini`):
+
+```ini
+*.dsTt[*].frerUplinkEnabled = true
+*.dsTt[*].frerReplicatorUl.frerStreams = "7"
+*.dsTt[*].frerReplicatorUl.replicaDscp = 8
+*.dsTt[*].frerReplicatorUl.transportBinding = "drb"
+
+*.nwTt.frerUplinkEnabled = true
+*.nwTt.frerRecoveryUl.frerStreams = "7"
+*.nwTt.frerRecoveryUl.replicaDscp = 8
+```
+
+**Path-diverse bindings.** For `pduSession` and `dualConnectivity`, also set
+`replicaInterface` to the name of the secondary PPP interface, enable the
+second N3 link on both ends, and add a second UPF (and, for
+`dualConnectivity`, a second gNB) to your topology:
+
+```ini
+*.frerInterSession = true                      # network: adds upf2; NGNodeB: adds ppp2
+*.nwTt.frerInterSession = true                 # NwTt: adds pppIf2
+*.nwTt.frerReplicator.transportBinding = "pduSession"
+*.nwTt.frerReplicator.replicaInterface = "pppIf2"
+*.upf2.gtp_user.forceTunnelPeer = "gnb"        # pduSession: same gNB, independent N3
+```
+
+For `dualConnectivity`, set the network's `frerDualConn = true` as well to
+instantiate the second gNB.
+
+The replicator throws a runtime error if `replicaInterface` is left empty for
+either path-diverse binding, or if `transportBinding` is not one of the three
+names above.
+
+**Framing.** Both modules take an `ethernetFramed` parameter, preset by the
+enclosing NED: `false` where packets are bare IPv4 (NW-TT downlink
+replication) and `true` where they carry Ethernet framing (everywhere else).
+Scenarios do not normally need to set it.
 
 ---
 
 ## File Inventory
 
-### Source modules (`src/nodes/nascTime/`)
+### Source modules (`src/nasctime/`)
+
+All sources live under `src/nasctime/`, mirroring the `nasctime` NED package
+root — the same convention Simu5G uses for `src/simu5g/`. The project builds
+as a shared library, `src/libnasctime.so`.
 
 ```
-src/nodes/nascTime/NwTt/                 NW-TT (Network-side TSN Translator)
+src/nasctime/package.ned                 NED package root (package nasctime)
+
+src/nasctime/nodes/NwTt/                 NW-TT (Network-side TSN Translator)
 ├── NwTt.ned                             Compound module (LayeredEthernetInterface + ethLi dispatcher)
 ├── NwTtTranslator.ned                   Simple module (L2↔IP + QoS + gPTP replication)
-├── NwTtTranslator.h                     C++ header
-├── NwTtTranslator.cc                    C++ implementation
-├── GptpSideband.ned                     gPTP sideband delay module (fallback)
-├── GptpSideband.h                       C++ header
-├── GptpSideband.cc                      C++ implementation
+├── NwTtTranslator.h / .cc                C++ implementation
+├── GptpSideband.ned / .h / .cc           gPTP sideband delay module (fallback transport)
 └── GptpResidenceHeader.msg              Residence time header (auto-compiled)
 
-src/nodes/nascTime/DsTt/                 DS-TT (Device-side TSN Translator) + UE variants
+src/nasctime/nodes/DsTt/                 DS-TT (Device-side TSN Translator) + UE variant
 ├── DsTt.ned                             Compound module (LayeredEthernetInterface + tsnLi/ueLi dispatchers)
 ├── DsTtTranslator.ned                   Simple module (L2 forwarder + gPTP + QoS)
-├── DsTtTranslator.h                     C++ header
-├── DsTtTranslator.cc                    C++ implementation
-├── NRUeDsTt.ned                         NR UE with Ethernet port (extends NrNicUe)
-└── NRUeDsTtDrb.ned                      NR UE with Ethernet port + multi-DRB QoS
+├── DsTtTranslator.h / .cc                C++ implementation
+└── NRUeDsTt.ned                         NR UE with Ethernet port (extends NrUe)
 
-src/nodes/nascTime/TsnAf/                TSN Application Function + BMCA
-├── TsnAf.ned                            TSN AF (bridge capabilities + CNC config)
-├── TsnAf.h                              C++ header
-├── TsnAf.cc                             C++ implementation
-├── StaticBmca.ned                       Static BMCA stub (clock hierarchy)
-├── StaticBmca.h                         C++ header
-└── StaticBmca.cc                        C++ implementation
+src/nasctime/nodes/TsnAf/                TSN Application Function + BMCA
+├── TsnAf.ned / .h / .cc                  TSN AF (bridge capabilities + CNC config)
+└── StaticBmca.ned / .h / .cc             Static BMCA (clock hierarchy)
 
-src/nodes/frer/                          IEEE 802.1CB FRER framework
-├── IFrerTransportBinding.h              Abstract transport-binding interface
-├── FrerReplicator.ned / .h / .cc        Stream replication (DL at NW-TT, UL at DS-TT)
-├── FrerRecovery.ned / .h / .cc          Duplicate elimination (DL at DS-TT, UL at NW-TT)
-├── DrbTransportBinding.h                DRB-level replica separation (same N3 path)
-├── PathDiverseTransportBinding.h        Shared base for path-diverse bindings
-├── PduSessionTransportBinding.h         Independent N3 path, same gNB
-└── DualConnTransportBinding.h           Independent N3 path, independent gNB
+src/nasctime/nodes/frer/                 IEEE 802.1CB FRER framework
+├── FrerReplicator.ned / .h / .cc         Stream replication (DL at NW-TT, UL at DS-TT)
+├── FrerRecovery.ned / .h / .cc           Duplicate elimination (DL at DS-TT, UL at NW-TT)
+├── FrerSequenceHeader.msg               Per-stream sequence number header (auto-compiled)
+├── IFrerTransportBinding.h              Transport-binding interface *and* all four
+│                                          implementations in one header:
+│                                          DrbTransportBinding, PathDiverseTransportBinding
+│                                          (base), PduSessionTransportBinding,
+│                                          DualConnTransportBinding
+└── NrDcMux.ned / .h / .cc                Dual-connectivity leg multiplexer (F4)
 
-src/nodes/nascTime/NascGNodeB.ned        gNB extension with a second PPP interface (ppp2) for
-                                          FRER inter-session / dual-connectivity transport
-                                          diversity
+src/nasctime/nodes/nGNodeB.ned           NGNodeB — gNB with a second PPP interface (ppp2)
+                                           for FRER inter-session / dual-connectivity
+                                           transport diversity
+src/nasctime/nodes/NrNicUeDc.ned         NrNicUeDC — UE NIC with a secondary NR leg (F4);
+                                           requires the Simu5G fork's Rrc extensions
 ```
 
 ### Simulations (`simulations/demos/`) and Tests (`tests/`)
 
 ```
+tests/package.ned                        package nasctime.tests
 tests/nwtt_test/            NW-TT only baseline (G1)
 ├── NwTtTestNetwork.ned
-├── omnetpp.ini
+├── omnetpp.ini                          configs NwTtBasicTest, NwTtHighLoad, NwTtFading
 └── nwtt_ip_config.xml
 
 tests/bridge_test/          Full bridge without gPTP (G1)
 ├── BridgeTestNetwork.ned
-├── omnetpp.ini
+├── omnetpp.ini                          configs FullBridgeTest, FullBridgeWithFading
 └── bridge_ip_config.xml
 
 tests/gptp_test/            Full bridge with gPTP + residence time (G2+G3)
 ├── GptpBridgeTestNetwork.ned
-├── omnetpp.ini
-└── gptp_bridge_ip_config.xml
+├── omnetpp_gptp.ini                     config GptpBridgeTest
+└── bridge_ip_config.xml
 
 tests/qos_test/             QoS + TSN AF + BMCA (G4+G5+G6)
-├── QosBridgeTestNetwork.ned
-├── omnetpp.ini
-├── qos_bridge_ip_config.xml
+├── qosBridgeTestNetwork.ned
+├── omnetpp_qos.ini                      config GptpBridgeTest
+├── bridge_ip_config.xml
 └── cnc_config.xml
 
+tests/fingerprint/          Fingerprint regression suite (run with `make tests`)
+├── fingerprints                         Test runner
+├── simulations.csv                      Recorded baselines, one line per scenario
+├── updateallfingerprints.sh             Promotes *.UPDATED baselines after a verified change
+└── README                               Usage, and the -d (debug library) limitation
+
+simulations/package.ned                  package nasctime.simulations
 simulations/demos/multi_endpoint_test/  Multi-endpoint scaling (S1-S8)
 ├── MultiEndpointNetwork.ned
-├── omnetpp.ini
+├── omnetpp_multi.ini                    config MultiEndpointTest
 ├── multi_ip_config.xml
 └── cnc_config.xml
 
 simulations/demos/ext_multiendpoint_test/  Scalability sweep, heterogeneous traffic mix
-├── ExtendedMultiEndpointNetwork.ned
-├── ex_multi_omnetpp.ini
+├── ExtendedMultiEndpointNetwork.ned     Also the network used by every frer_test scenario
+├── ex_multi_omnetpp.ini                 Base config (Hetero_N*), included by frer_test
+├── omnetpp_sweep.ini                    Scheduler × N sweep
+├── multi_ip_config.xml / cnc_config.xml
 ├── gen_profile_ini.py                   Generates per-N traffic profile fragments
-└── profiles/
+├── profiles/                            Generated fragments (profiles_N*.ini)
+├── fading.csv                           Fading trace input
+└── analyze_primary.py, parse_results.py, vec_parse.py   Result post-processing
 
 simulations/demos/frer_test/            FRER validation (F1-F4)
-├── frer_uplink.ini                      Uplink replication/recovery
-├── frer_intersession.ini                Inter-PDU-session transport diversity
-├── frer_dualconn.ini                    NR dual-connectivity transport diversity
+├── frer_uplink.ini                      Bidirectional replication/recovery (FrerBidirectional_N1)
+├── frer_intersession.ini                Inter-PDU-session transport diversity (FrerInterSession_N15)
+├── frer_dualconn.ini                    NR dual-connectivity transport diversity (FrerDualConn_N15)
 ├── frer_sweep.ini                       Scheduler × N × FRER-mode evaluation sweep
 ├── gen_profile_ini.py                   FRER-extended traffic profile generator
-└── profiles/
+└── profiles/                            Generated fragments (plain, _frer_sym, _frer_asym)
 ```
+
+The `frer_test/` scenarios carry no network NED of their own — each one
+`include`s `../ext_multiendpoint_test/ex_multi_omnetpp.ini` and runs on
+`ExtendedMultiEndpointNetwork`.
+
+### Helper scripts (`bin/`)
+
+```
+bin/nasctime                 Runs a scenario against libnasctime.so (release)
+bin/nasctime_dbg             Same, against libnasctime_dbg.so
+bin/nasctime-run.sh          Scenario-agnostic opp_run wrapper; passes all args through
+bin/run_matrix.sh            Parallel launcher for the full experiment matrix
+bin/smoke_test.sh            End-to-end check of the heterogeneous traffic generator
+```
+
+`bin/` is added to `PATH` by sourcing `setenv` from the nascTime root; the
+launchers resolve NED and library paths from `NASCTIME_ROOT`, `INET_ROOT`
+and `SIMU5G_ROOT`.
 
 ---
 
@@ -587,45 +679,67 @@ separately via `mac.drbQosConfig`.
 
 ## Build Instructions
 
+See [INSTALL.md](INSTALL.md) for the full installation walkthrough,
+including the recommended `opp_env` setup and the IDE import steps. This
+section is the summary.
+
 ### Prerequisites
-- OMNeT++ 6.3 (6.1–6.4 also supported)
+- OMNeT++ 6.4.0 or later
 - INET 4.6.x, built
-- Simu5G v1.5.0, built
+- Simu5G v1.5.0, built against that INET — **vanilla for everything except
+  FRER**. For any scenario under `simulations/demos/frer_test/`, build
+  [nascTime's Simu5G fork](https://github.com/MohamedSeliem/Simu5G/tree/nasctime-v1.0)
+  (tag `nasctime-v1.0`) instead. See "Which Simu5G do I need?" above.
 
-SDAP/DRB support is native to Simu5G v1.5.0 and requires no
-modifications for non-FRER scenarios. **If you plan to run any FRER
-scenario** (anything under `simulations/demos/frer_test/`), build
-against [nascTime's Simu5G fork](<https://github.com/MohamedSeliem/Simu5G/tree/nasctime-core-patches>) instead — see "Which Simu5G do I need?" above.
+### Building
 
-### Project setup
+nascTime is a standalone OMNeT++ project that consumes INET and Simu5G the
+same way Simu5G consumes INET: through the `INET_ROOT` and `SIMU5G_ROOT`
+environment variables. There is no hardcoded sibling-directory assumption —
+source each project's own `setenv` (OMNeT++, INET, Simu5G, then nascTime),
+or pass the paths explicitly:
 
-nascTime is a standalone OMNeT++ project. Place it alongside your `inet`
-and `simu5g` checkouts and add both as **project references**:
+```bash
+cd nascTime-5gtsn
+make                                    # regenerates src/Makefile, then builds
+make INET_ROOT=/path/to/inet SIMU5G_ROOT=/path/to/simu5g
+make MODE=debug                         # debug build, coexists with release
+```
 
-1. In the OMNeT++ IDE: right-click the nascTime project → *Properties* →
-   *Project References* → tick your `inet` and `simu5g` projects.
-2. Also under *Properties* → *OMNeT++* → *Makemake*, select the `src`
-   folder and confirm both sibling projects' `src` directories are listed
-   as include paths (not just library paths) on the Compile tab — this is
-   required for headers to resolve, in addition to the Link tab's library
-   references.
-3. Regenerate Makefiles and build (*Project* → *Build Project*), or from
-   the command line:
-   ```bash
-   cd nascTime/src
-   make MODE=release all
-   ```
+`make` refuses to run with a helpful message if either variable is unset or
+points somewhere without a `src/` directory. The build product is a shared
+library, `src/libnasctime.so` — not a standalone executable.
+
+In the OMNeT++ IDE, import the project and tick `inet` and `simu5g` under
+*Properties* → *Project References*; the makemake options come from
+`.oppbuildspec`, which the command-line build reads too, so both paths stay
+in sync.
 
 ### Running a scenario
 
+After sourcing nascTime's `setenv`, the `bin/nasctime` launcher resolves the
+NED and library paths for you:
+
 ```bash
-cd nascTime/simulations/demos/multi_endpoint_test
-opp_run -u Cmdenv -c MultiEndpointTest -f omnetpp.ini \
-  -n ".:../../../src:<inet>/src:<simu5g>/src" \
-  -l ../../../src/nascTime -l <simu5g>/src/simu5g -l <inet>/src/INET
+cd simulations/demos/multi_endpoint_test
+nasctime -f omnetpp_multi.ini -c MultiEndpointTest
 ```
 
-Adjust the `<inet>`/`<simu5g>` paths to match your local checkout layout.
+Use `nasctime_dbg` for the debug library. Without `setenv`, invoke the
+launcher by path (`../../../bin/nasctime -f omnetpp_multi.ini`) — it still
+needs `INET_ROOT` and `SIMU5G_ROOT` exported.
+
+### Running the regression suite
+
+```bash
+make tests            # equivalently: cd tests/fingerprint && ./fingerprints
+```
+
+The fingerprint baselines in `tests/fingerprint/simulations.csv` cover the
+`tests/` scenarios plus `frer_test`/`ext_multiendpoint_test`, so a full pass
+requires the Simu5G fork. Baselines are tied to the exact OMNeT++/INET/Simu5G
+versions they were recorded with — see `tests/fingerprint/README` for how to
+re-record them and for the known debug-library limitation.
 
 ---
 
@@ -637,9 +751,9 @@ Adjust the `<inet>`/`<simu5g>` paths to match your local checkout layout.
 2. **Static BMCA** validates topology but does not dynamically reconfigure
    gPTP port roles. INET's `Gptp` module does not support dynamic BMCA.
 
-3. **DRB-enabled UE variant (`NRUeDsTtDrb.ned`)** is being finalized for
-   Simu5G v1.5.0's SDAP/DRB module layout. Until that lands, use `NRUeDsTt`
-   with `hasSdap=true` and a `drbConfig` list for multi-DRB QoS scenarios.
+3. **No dedicated DRB-enabled UE variant.** Multi-DRB QoS is configured on the
+   stock `NRUeDsTt` via `cellularNic.hasSdap = true` plus a `drbConfig` list;
+   there is no separate `NRUeDsTtDrb` module.
 
 4. **FRER inter-PDU-session transport diversity (F3)** is implemented but
    has not yet completed full end-to-end integration testing across all
@@ -652,6 +766,7 @@ Adjust the `<inet>`/`<simu5g>` paths to match your local checkout layout.
    Earlier versions of this README incorrectly stated no Simu5G source
    modifications were required at all — this was wrong for FRER
    specifically. See "Which Simu5G do I need?" above.
+
 ---
 
 ## References

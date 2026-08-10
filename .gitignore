@@ -3,14 +3,14 @@
 Thumbs.db
 *.swp
 *.swo
+
+# IDE artifacts
 .idea/
 .vscode/
+.settings/
 
 # Build artifacts
 out/
-build/
-bin/
-lib/
 
 # OMNeT++ / simulation outputs
 results/
@@ -20,23 +20,27 @@ results/
 *.elog
 *.log
 
+.qtenvrc
+.cmdenv-log
+
 # Generated files
-*.oppfeaturestate
+.oppfeaturestate
+.nedexclusions
 *.d
 *.o
 *.so
-Makefile.inc
-# Build artifacts
-/src/nascTime
-/src/Makefile
-
-# Simulation results
-results/
+*.dll
+*.lib
+*.a
 
 # opp_msgc-generated files (from .msg sources)
 *_m.h
 *_m.cc
 
-# bin/ now holds real scripts (run, etc.) -- un-ignore
-!bin/
-!bin/**
+# Build artifacts
+/src/nascTime
+/src/Makefile
+
+# opp_msgc-generated files (from .msg sources)
+*_m.h
+*_m.cc
