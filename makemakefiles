@@ -1,0 +1,14 @@
+#
+# Usage:
+#    make -f makemakefiles
+# or, for Microsoft Visual C++:
+#    nmake -f makemakefiles MMOPT=-n
+#
+
+MAKEMAKE=opp_makemake $(MMOPT)
+
+INET_4_6_0_PROJ=../inet-4.6.0
+SIMU5G_PROJ=../Simu5G
+
+all:
+	cd src && $(MAKEMAKE) -f --deep -KINET_4_6_0_PROJ=../../inet-4.6.0 -KSIMU5G_PROJ=../../Simu5G -DINET_IMPORT -I/home/vboxuser/simu5g-nasc/inet-4.6.0/src -I/home/vboxuser/simu5g-nasc/simu5g-1.5.0/src -L$$\(INET_4_6_0_PROJ\)/src -L$$\(SIMU5G_PROJ\)/src -lINET$$\(D\) -lsimu5g$$\(D\)
