@@ -27,22 +27,22 @@
     src-module="dsTt[0]" src-gate="ueEthg$o" instead.
 -->
 <scenario>
-    <!-- t=5s: the leg turns bad. 20ms one-way delay and 30% of the frames
+    <!-- t=2s: the leg turns bad. 20ms one-way delay and 30% of the frames
          arrive corrupted. `per` marks the packet as errored; the receiving
          Ethernet MAC drops it (EthernetMacPhy.cc:297). -->
-    <at t="5s">
+    <at t="2s">
         <set-channel-param src-module="ue[0]" src-gate="ethg" par="delay" value="20ms"/>
         <set-channel-param src-module="ue[0]" src-gate="ethg" par="per" value="0.3"/>
     </at>
 
-    <!-- t=8s: full outage. Nothing crosses the channel at all, which is the
+    <!-- t=3.5s: full outage. Nothing crosses the channel at all, which is the
          cleanest trigger for a failover experiment. -->
-    <at t="8s">
+    <at t="3.5s">
         <set-channel-param src-module="ue[0]" src-gate="ethg" par="disabled" value="true"/>
     </at>
 
     <!-- Recovery, if you want to see the link come back:
-    <at t="9s">
+    <at t="4.5s">
         <set-channel-param src-module="ue[0]" src-gate="ethg" par="disabled" value="false"/>
         <set-channel-param src-module="ue[0]" src-gate="ethg" par="per" value="0"/>
         <set-channel-param src-module="ue[0]" src-gate="ethg" par="delay" value="0.1us"/>

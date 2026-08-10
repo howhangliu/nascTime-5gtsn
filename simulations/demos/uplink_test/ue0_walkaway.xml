@@ -15,10 +15,15 @@
     on a schedule is a scripted mobility model. TurtleMobility takes exactly
     this kind of timeline.
 
-    Timeline: ue[0] sits at its nominal spot until t=5s, then walks out to
-    ~800m from the gNB over 3s. Path loss climbs, CQI reports collapse, the
-    uplink grants shrink, HARQ retransmissions pile up, and both latency and
-    loss go up on the leg that actually carries the traffic.
+    Timeline: ue[0] sits at its nominal spot until t=2s, then covers the
+    distance in 1s and stays put for the remaining 2s of the run. Path loss
+    climbs, CQI reports collapse, the uplink grants shrink, HARQ
+    retransmissions pile up, and both latency and loss go up on the leg that
+    actually carries the traffic.
+
+    The 1s transit is deliberately faster than anything physical; the point
+    is to spend most of the run in the degraded state, not to model a walk.
+    Stretch it if you want to watch the quality decay gradually instead.
 -->
 <movements>
     <movement id="walkAway">
@@ -28,15 +33,15 @@
         <!-- No speed here: TurtleMobility rejects speed="0" outright, and
              <wait> holds the position regardless of what speed says. -->
         <set x="950" y="250"/>
-        <wait t="5"/>
+        <wait t="2"/>
 
         <!-- 2D distance to the gNB at (750,350) goes 224m -> 1852m, i.e. about
              34dB of extra UMi NLOS path loss at 3.5GHz. Measured effect on the
-             class-6 stream: 8586 of 9000 packets delivered without this script,
-             5993 with it. Pull the endpoint back in for a milder leg; 2000m of
+             class-6 stream: 4298 of 4500 packets delivered without this script,
+             2846 with it. Pull the endpoint back in for a milder leg; 2000m of
              2D distance is the hard ceiling before NrChannelModel throws
              (NrChannelModel.cc, computeUrbanMicro). -->
-        <moveto x="2550" y="250" t="3"/>
+        <moveto x="2550" y="250" t="1"/>
 
         <!-- Park there for the rest of the run. -->
         <wait t="100"/>

@@ -11,7 +11,7 @@
       sendInterval   UdpBasicApp.cc:156 reads par("sendInterval") every time
                      it schedules the next send, so the new rate takes effect
                      from the *next* packet on (the send already scheduled at
-                     t=5s still fires at the old spacing).
+                     t=2s still fires at the old spacing).
       messageLength  UdpBasicApp.cc:111 reads par("messageLength") per packet.
 
     Parameters that are cached into a C++ member during initialize() will NOT
@@ -20,9 +20,9 @@
     change radio conditions at runtime.
 -->
 <scenario>
-    <at t="5s">
-        <!-- Class-6 stream: 1ms -> 5ms -->
-        <set-param module="tsnDeviceB.app[0]" par="sendInterval" value="5ms"/>
+    <at t="2s">
+        <!-- Class-6 stream: 1ms -> 100ms -->
+        <set-param module="tsnDeviceB.app[0]" par="sendInterval" value="100ms"/>
 
         <!-- Best-effort stream: mean 2ms -> mean 10ms. `sendInterval` is a
              volatile parameter, so a random-value expression stays random:
