@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Deterministic emulation of a degraded access leg, driven by INET's
+    ScenarioManager (see [Config UplinkBadLegEmulated] in omnetpp_uplink.ini).
+
+    This degrades the *wired* ue[0] to dsTt[0] Ethernet hop rather than the
+    radio: <set-channel-param> retunes the cDatarateChannel underneath the
+    connection, and delay/per/disabled are plain channel state, read per
+    transmission. That makes latency and loss exact numbers you dial in,
+    which is what you want when the point is to observe how the TSN side
+    reacts rather than to model why the link went bad.
+
+    For the radio-side version (path loss, CQI collapse, HARQ failures) use
+    ue0_walkaway.xml instead.
+
+    Naming an inout gate ("ethg") retunes both directions of the connection in
+    one command; naming a gate half ("ueEthg$o") would retune only that one.
+
+    CAVEAT IF YOU RE-ENABLE gPTP: the config that loads this script extends
+    PerfectSync, so nothing time-critical crosses this hop. With gPTP on, the
+    master-to-slave Sync/FollowUp pair reaches the DS-TT through this very
+    link (tunneled over GTP-U, *.nwTt.translator.gptpTransportMode = "gtpu"),
+    and dropping frames on it segfaults INET: Gptp::sendFollowUp dereferences
+    syncReceiverProcess.followUp without checking it (Gptp.cc:262), so a Sync
+    whose FollowUp was lost takes the simulation down. Extra delay is harmless
+    either way; for loss, restrict it to the data direction by using
+    src-module="dsTt[0]" src-gate="ueEthg$o" instead.
+-->
+<scenario>
+    <!-- t=5s: the leg turns bad. 20ms one-way delay and 30% of the frames
+         arrive corrupted. `per` marks the packet as errored; the receiving
+         Ethernet MAC drops it (EthernetMacPhy.cc:297). -->
+    <at t="5s">
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="delay" value="20ms"/>
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="per" value="0.3"/>
+    </at>
+
+    <!-- t=8s: full outage. Nothing crosses the channel at all, which is the
+         cleanest trigger for a failover experiment. -->
+    <at t="8s">
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="disabled" value="true"/>
+    </at>
+
+    <!-- Recovery, if you want to see the link come back:
+    <at t="9s">
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="disabled" value="false"/>
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="per" value="0"/>
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="delay" value="0.1us"/>
+    </at>
+    -->
+</scenario>

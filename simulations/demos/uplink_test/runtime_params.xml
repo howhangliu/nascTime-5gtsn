@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Runtime reconfiguration of the talker apps, driven by INET's
+    ScenarioManager (see *.scenarioManager.script in omnetpp_uplink.ini,
+    [Config UplinkRuntimeParams]).
+
+    <set-param> assigns a new value to a module parameter mid-run. It only
+    has a visible effect for parameters the owning module re-reads after
+    initialize(); for the two used here that holds:
+
+      sendInterval   UdpBasicApp.cc:156 reads par("sendInterval") every time
+                     it schedules the next send, so the new rate takes effect
+                     from the *next* packet on (the send already scheduled at
+                     t=5s still fires at the old spacing).
+      messageLength  UdpBasicApp.cc:111 reads par("messageLength") per packet.
+
+    Parameters that are cached into a C++ member during initialize() will NOT
+    react to <set-param>: notably every knob of Simu5G's channel model
+    (LteRealisticChannelModel.cc:47-92). See ue0_walkaway.xml for the way to
+    change radio conditions at runtime.
+-->
+<scenario>
+    <at t="5s">
+        <!-- Class-6 stream: 1ms -> 5ms -->
+        <set-param module="tsnDeviceB.app[0]" par="sendInterval" value="5ms"/>
+
+        <!-- Best-effort stream: mean 2ms -> mean 10ms. `sendInterval` is a
+             volatile parameter, so a random-value expression stays random:
+             it is re-evaluated on every read, not sampled once here. -->
+        <set-param module="tsnDeviceB.app[1]" par="sendInterval" value="exponential(10ms)"/>
+
+        <!-- Payload size can be retuned the same way. -->
+        <set-param module="tsnDeviceB.app[0]" par="messageLength" value="200B"/>
+    </at>
+</scenario>
