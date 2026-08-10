@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Radio-side degradation of the active leg (see [Config UplinkBadRadio] in
+    omnetpp_uplink.ini).
+
+    Simu5G's channel model caches every one of its parameters into C++ members
+    at initialize() (LteRealisticChannelModel.cc:47-92), so ScenarioManager's
+    <set-param> cannot touch shadowing, fading, scenario, noise figures, tx
+    power or anything else about the channel once the run has started. The one
+    input that *is* re-read on every transmission is the node position:
+    LteRealisticChannelModel::getAttenuation() calls phy_->getCoord() per
+    computation (LteRealisticChannelModel.cc:106).
+
+    So geometry is the runtime knob for radio quality, and the way to drive it
+    on a schedule is a scripted mobility model. TurtleMobility takes exactly
+    this kind of timeline.
+
+    Timeline: ue[0] sits at its nominal spot until t=5s, then walks out to
+    ~800m from the gNB over 3s. Path loss climbs, CQI reports collapse, the
+    uplink grants shrink, HARQ retransmissions pile up, and both latency and
+    loss go up on the leg that actually carries the traffic.
+-->
+<movements>
+    <movement id="walkAway">
+        <!-- Same coordinates as *.ue[0].mobility.initialX/Y in the ini: with
+             initFromDisplayString off and no initialX parameter on
+             TurtleMobility, the script is what fixes the starting point. -->
+        <!-- No speed here: TurtleMobility rejects speed="0" outright, and
+             <wait> holds the position regardless of what speed says. -->
+        <set x="950" y="250"/>
+        <wait t="5"/>
+
+        <!-- 2D distance to the gNB at (750,350) goes 224m -> 1852m, i.e. about
+             34dB of extra UMi NLOS path loss at 3.5GHz. Measured effect on the
+             class-6 stream: 8586 of 9000 packets delivered without this script,
+             5993 with it. Pull the endpoint back in for a milder leg; 2000m of
+             2D distance is the hard ceiling before NrChannelModel throws
+             (NrChannelModel.cc, computeUrbanMicro). -->
+        <moveto x="2550" y="250" t="3"/>
+
+        <!-- Park there for the rest of the run. -->
+        <wait t="100"/>
+    </movement>
+</movements>
