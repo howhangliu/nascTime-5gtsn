@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Mid-run failover from the active access leg to the standby one, driven by
+    INET's ScenarioManager (see [Config UplinkStandbyLeg] in
+    omnetpp_uplink.ini).
+
+    WHY THE FAILOVER IS DONE WITH LINK STATE AND NOT WITH ROUTING
+
+    Which leg carries the traffic is normally decided by tsnDeviceB's IPv4
+    route: its next hop is the active UE's address, resolved to that UE's MAC.
+    Neither is reachable at runtime. Routes are built once by
+    Ipv4NetworkConfigurator, ScenarioManager has no route command
+    (ScenarioManager.cc:99-114 is the complete list), and INET does no next-hop
+    liveness checking, so simply breaking a leg would stop the traffic rather
+    than move it.
+
+    So the config makes the two legs indistinguishable to everything upstream
+    of the DS-TT: both UEs forward IP and both carry the same MAC address, the
+    switch has no static forwarding entry and therefore floods, and the two
+    legs differ only in the state of their UE to DS-TT link. That is MAC
+    takeover, the same trick hot-standby routers use, and it puts the whole
+    decision into channel state, which <set-channel-param> does reach.
+
+    The gateway address in tsnDeviceB's route stops mattering under that
+    arrangement: it was only ever an ARP key, and the surviving UE forwards on
+    the packet's destination (tsnDeviceA), not on whose gateway address the
+    frame was aimed at.
+
+    WHY `per` AND NOT `disabled`
+
+    A link that starts out disabled can never be brought back up. INET's
+    Ethernet MAC subscribes to its transmission channel's parameter changes
+    only on the branch it takes when the link came up connected
+    (EthernetMacBase.cc:424), so a MAC that initialized on a disabled channel
+    is never notified that the channel was re-enabled and stays `connected =
+    false` for the rest of the run. Setting `disabled` the other way round does
+    work, which makes the failure look like a one-directional oddity: leg 0
+    goes down on cue and leg 1 never comes up.
+
+    `per = 1` avoids that entirely. The link stays physically up, carrier and
+    all, and every frame crossing it is marked errored and dropped by the
+    receiving MAC (EthernetMacPhy.cc:297). Same observable effect, and the
+    parameter is re-read on every packet.
+-->
+<scenario>
+    <!-- Make before break: the standby leg starts passing traffic first, then
+         the active one stops. Both land at the same simulation time, so the
+         ordering only decides the fate of the frame in flight. -->
+    <at t="2s">
+        <set-channel-param src-module="ue[1]" src-gate="ethg" par="per" value="0"/>
+        <set-channel-param src-module="ue[0]" src-gate="ethg" par="per" value="1"/>
+    </at>
+</scenario>
