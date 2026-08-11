@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Runtime reconfiguration of the talker apps, driven by INET's
-    ScenarioManager (see *.scenarioManager.script in omnetpp_uplink.ini,
+    Runtime reconfiguration of the talker app, driven by INET's ScenarioManager
+    (see *.scenarioManager.script in omnetpp_uplink.ini,
     [Config UplinkRuntimeParams]).
 
-    <set-param> assigns a new value to a module parameter mid-run. It only
-    has a visible effect for parameters the owning module re-reads after
-    initialize(); for the two used here that holds:
+    That config cuts tsnDeviceB down to a single UdpBasicApp sending a fixed
+    100B payload every 1ms, so the run has exactly one thing to watch and the
+    only variable is the period.
 
-      sendInterval   UdpBasicApp.cc:156 reads par("sendInterval") every time
-                     it schedules the next send, so the new rate takes effect
-                     from the *next* packet on (the send already scheduled at
-                     t=2s still fires at the old spacing).
-      messageLength  UdpBasicApp.cc:111 reads par("messageLength") per packet.
+    <set-param> assigns a new value to a module parameter mid-run. It only has
+    a visible effect for parameters the owning module re-reads after
+    initialize(), which is the case here: UdpBasicApp.cc:156 reads
+    par("sendInterval") every time it schedules the next send, so the new rate
+    takes effect from the *next* packet on (the send already scheduled at t=2s
+    still fires at the old spacing).
 
     Parameters that are cached into a C++ member during initialize() will NOT
     react to <set-param>: notably every knob of Simu5G's channel model
@@ -21,15 +22,7 @@
 -->
 <scenario>
     <at t="2s">
-        <!-- Class-6 stream: 1ms -> 100ms -->
+        <!-- Periodic traffic: 1ms -> 100ms, i.e. 1000pps down to 10pps. -->
         <set-param module="tsnDeviceB.app[0]" par="sendInterval" value="100ms"/>
-
-        <!-- Best-effort stream: mean 2ms -> mean 10ms. `sendInterval` is a
-             volatile parameter, so a random-value expression stays random:
-             it is re-evaluated on every read, not sampled once here. -->
-        <set-param module="tsnDeviceB.app[1]" par="sendInterval" value="exponential(10ms)"/>
-
-        <!-- Payload size can be retuned the same way. -->
-        <set-param module="tsnDeviceB.app[0]" par="messageLength" value="200B"/>
     </at>
 </scenario>
