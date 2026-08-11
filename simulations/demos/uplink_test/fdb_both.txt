@@ -1,0 +1,11 @@
+# Static forwarding entries for tsnSwitchB, both access legs.
+#
+# The runtime-failover config keeps the two UEs on distinct MAC addresses and
+# moves the traffic by changing tsnDeviceB's next hop, so the switch has to
+# know where each of them lives. Without these entries it would flood every
+# uplink frame out both legs, which happens to deliver but hides which leg is
+# actually carrying.
+#
+# vlanId  MAC address        interface
+0         0A-AA-00-00-00-01  eth0
+0         0A-AA-00-00-00-02  eth1

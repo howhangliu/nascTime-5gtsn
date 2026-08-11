@@ -21,6 +21,7 @@ import simu5g.world.radio.LteChannelControl;
 import simu5g.common.binder.Binder;
 import simu5g.common.carrierAggregation.CarrierAggregation;
 import inet.common.scenario.ScenarioManager;
+import nasctime.common.RouteSwitcher;
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.networklayer.ipv4.RoutingTableRecorder;
 import inet.node.tsn.TsnDevice;
@@ -85,6 +86,11 @@ network UplinkNetwork
         // `*.scenarioManager.script` at an XML file. See omnetpp_uplink.ini.
         scenarioManager: ScenarioManager {
             @display("p=50,375;is=s");
+        }
+        // Gives the scenario script a <set-route> command. Inert unless a
+        // script addresses it. See RouteSwitcher.ned.
+        routeSwitcher: RouteSwitcher {
+            @display("p=50,425;is=s");
         }
 
         // Listener side: TSN device A straight onto the NW-TT (no switch)

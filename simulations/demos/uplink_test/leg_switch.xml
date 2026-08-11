@@ -4,50 +4,35 @@
     INET's ScenarioManager (see [Config UplinkStandbyLeg] in
     omnetpp_uplink.ini).
 
-    WHY THE FAILOVER IS DONE WITH LINK STATE AND NOT WITH ROUTING
+    Which leg carries the traffic is tsnDeviceB's IPv4 next hop: 192.168.1.1 is
+    ue[0], 192.168.1.2 is ue[1]. Moving the traffic therefore means editing a
+    route, and ScenarioManager has no command for that
+    (ScenarioManager.cc:99-114 is the complete list). <set-route> below is
+    nascTime's own, provided by the RouteSwitcher module in the network: it
+    edits the route through IIpv4RoutingTable, the same API a routing protocol
+    would use, and the routing table drops its lookup cache on the change, so
+    the next packet already takes the new leg.
 
-    Which leg carries the traffic is normally decided by tsnDeviceB's IPv4
-    route: its next hop is the active UE's address, resolved to that UE's MAC.
-    Neither is reachable at runtime. Routes are built once by
-    Ipv4NetworkConfigurator, ScenarioManager has no route command
-    (ScenarioManager.cc:99-114 is the complete list), and INET does no next-hop
-    liveness checking, so simply breaking a leg would stop the traffic rather
-    than move it.
+    `destination` and `gateway` take module names here, the way the .ini names
+    nodes; dotted-quad addresses work too. The "%eth0" matters: a UE is
+    multi-homed, and a bare "ue[1]" resolves to its cellular address rather
+    than the Ethernet port that faces the TSN island.
 
-    So the config makes the two legs indistinguishable to everything upstream
-    of the DS-TT: both UEs forward IP and both carry the same MAC address, the
-    switch has no static forwarding entry and therefore floods, and the two
-    legs differ only in the state of their UE to DS-TT link. That is MAC
-    takeover, the same trick hot-standby routers use, and it puts the whole
-    decision into channel state, which <set-channel-param> does reach.
+    Nothing else in the network is touched. Both UEs forward IP throughout, the
+    two legs keep distinct MAC addresses, and the switch keeps a static
+    forwarding entry per leg (fdb_both.txt), so the traffic sits on exactly one
+    leg at any moment and never gets flooded to both.
 
-    The gateway address in tsnDeviceB's route stops mattering under that
-    arrangement: it was only ever an ARP key, and the surviving UE forwards on
-    the packet's destination (tsnDeviceA), not on whose gateway address the
-    frame was aimed at.
-
-    WHY `per` AND NOT `disabled`
-
-    A link that starts out disabled can never be brought back up. INET's
-    Ethernet MAC subscribes to its transmission channel's parameter changes
-    only on the branch it takes when the link came up connected
-    (EthernetMacBase.cc:424), so a MAC that initialized on a disabled channel
-    is never notified that the channel was re-enabled and stays `connected =
-    false` for the rest of the run. Setting `disabled` the other way round does
-    work, which makes the failure look like a one-directional oddity: leg 0
-    goes down on cue and leg 1 never comes up.
-
-    `per = 1` avoids that entirely. The link stays physically up, carrier and
-    all, and every frame crossing it is marked errored and dropped by the
-    receiving MAC (EthernetMacPhy.cc:297). Same observable effect, and the
-    parameter is re-read on every packet.
+    Note that this is a scripted change and not a reaction to failure. INET
+    does no next-hop liveness checking, and on an interface state change
+    Ipv4RoutingTable only rebuilds netmask routes (Ipv4RoutingTable.cc:173):
+    a static route pointing at a dead next hop stays. Failover that discovers
+    the break by itself needs a routing protocol; INET ships several under
+    inet/routing (rip, ospfv2, bgpv4, ...).
 -->
 <scenario>
-    <!-- Make before break: the standby leg starts passing traffic first, then
-         the active one stops. Both land at the same simulation time, so the
-         ordering only decides the fate of the frame in flight. -->
     <at t="2s">
-        <set-channel-param src-module="ue[1]" src-gate="ethg" par="per" value="0"/>
-        <set-channel-param src-module="ue[0]" src-gate="ethg" par="per" value="1"/>
+        <set-route module="routeSwitcher" host="tsnDeviceB"
+                   destination="tsnDeviceA" gateway="ue[1]%eth0"/>
     </at>
 </scenario>
