@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Radio degradation without moving anything, driven by INET's
+    ScenarioManager (see [Config UplinkRadioImpairment] in omnetpp_uplink.ini).
+
+    ue0_walkaway.xml does the same thing the way stock Simu5G forces you to:
+    channel quality is a function of geometry, so the only lever is to walk the
+    UE away from the gNodeB and wait for the distance to build up. Every direct
+    knob of the channel model is cached into a C++ member during initialize()
+    (LteRealisticChannelModel.cc:47-92), so <set-param> on it changes the
+    parameter and nothing ever reads it again.
+
+    TunableNrChannelModel is that missing lever: the same NrChannelModel, plus
+    two parameters that are re-read on every call and annotated @mutable.
+    Nothing moves, and the change lands on the next transmission.
+
+    The module addressed here is the gNodeB's channel model because this is an
+    uplink scenario. The SINR of an uplink transmission is computed by its
+    receiver, and so is the CQI the gNodeB feeds back to the UE. Note the path:
+    channelModel[] hangs off the NIC, not off the phy (LteNicBase.ned:109).
+
+    What each step should do to the traffic:
+
+      t=2s   sinrOffset 0dB to 12dB
+             Enough to cost several CQI steps. The scheduler answers with a
+             more robust MCS and more resource blocks per packet, and the odd
+             transmission now fails the BLER draw and is retransmitted by HARQ.
+             End-to-end latency and jitter rise; loss stays near zero.
+
+      t=3.5s extraPer 0 to 0.3
+             Loss the scheduler cannot adapt to, since it never reaches the
+             CQI: three transmission attempts in ten are simply discarded.
+             HARQ absorbs most of it, at the price of more latency again.
+
+      t=4.5s both back to nominal
+             Shows the link recovering, which the walk-away scenario cannot do
+             without walking the UE back.
+-->
+<scenario>
+    <at t="2s">
+        <set-param module="gnb.cellularNic.channelModel[0]"
+                   par="sinrOffset" value="12dB"/>
+    </at>
+    <at t="3.5s">
+        <set-param module="gnb.cellularNic.channelModel[0]"
+                   par="extraPer" value="0.3"/>
+    </at>
+    <at t="4.5s">
+        <set-param module="gnb.cellularNic.channelModel[0]"
+                   par="sinrOffset" value="0dB"/>
+        <set-param module="gnb.cellularNic.channelModel[0]"
+                   par="extraPer" value="0"/>
+    </at>
+</scenario>
