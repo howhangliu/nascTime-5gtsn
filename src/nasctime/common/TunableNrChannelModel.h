@@ -36,7 +36,7 @@ class TunableNrChannelModel : public simu5g::NrChannelModel
     enum ImpairedDirection { IMPAIR_UL, IMPAIR_DL, IMPAIR_BOTH };
     ImpairedDirection impairedDirection_ = IMPAIR_BOTH;
 
-    bool impairs(simu5g::Direction dir) const;
+    bool impairs(const simu5g::UserControlInfo *lteInfo) const;
 
   public:
     void initialize(int stage) override;
