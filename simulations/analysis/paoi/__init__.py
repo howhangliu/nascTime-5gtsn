@@ -13,9 +13,11 @@ Typical use::
 from .aoi import AoiTrace, PeakAoiSeries, PeakSample, Reception
 from .plots import AoiTimelineFigure, CcdfFigure
 from .scenario import RunSpec, Scenario
+from .scenarios import FIGURES_DIR, SCENARIOS, figure_path
 from .vectors import Sample, VectorFile
 
 __all__ = [
-    "AoiTimelineFigure", "AoiTrace", "CcdfFigure", "PeakAoiSeries", "PeakSample",
-    "Reception", "RunSpec", "Sample", "Scenario", "VectorFile",
+    "AoiTimelineFigure", "AoiTrace", "CcdfFigure", "FIGURES_DIR", "PeakAoiSeries",
+    "PeakSample", "Reception", "RunSpec", "SCENARIOS", "Sample", "Scenario",
+    "VectorFile", "figure_path",
 ]

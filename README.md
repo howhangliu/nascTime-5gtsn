@@ -560,6 +560,19 @@ bin/smoke_test.sh            End-to-end check of the heterogeneous traffic gener
 launchers resolve NED and library paths from `NASCTIME_ROOT`, `INET_ROOT`
 and `SIMU5G_ROOT`.
 
+### Result analysis (`simulations/analysis/`)
+
+Post-processing shared by every scenario: a `paoi` package that reconstructs
+age of information from `.vec` files, and one CLI over a registry of the
+figures this project publishes.
+
+```bash
+simulations/analysis/plot_paoi_ccdf.py --all
+```
+
+See `simulations/analysis/README.md` for the layout, how to register a new
+scenario, and where the figure styling lives.
+
 ---
 
 ## H5: LayeredEthernetInterface Migration

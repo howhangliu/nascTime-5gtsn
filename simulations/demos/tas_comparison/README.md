@@ -72,8 +72,8 @@ delay.
 
 ## Peak age of information
 
-`plot_paoi_ccdf.py` draws the CCDF of the critical stream's peak AoI for both
-configurations on one set of axes:
+`simulations/analysis/plot_paoi_ccdf.py` draws the CCDF of the critical
+stream's peak AoI for both configurations on one set of axes:
 
 Source the OMNeT++, INET, Simu5G and nascTime `setenv` scripts first (see the
 top-level README) so that `opp_run` is on `PATH` and `INET_ROOT` / `SIMU5G_ROOT`
@@ -82,12 +82,15 @@ are set. Then, from this directory:
 ```
 ../../../bin/nasctime-run.sh -u Cmdenv -c Baseline -f omnetpp.ini
 ../../../bin/nasctime-run.sh -u Cmdenv -c Tas -f omnetpp.ini
-./plot_paoi_ccdf.py
+../../analysis/plot_paoi_ccdf.py --scenario 5g-tsn
 ```
 
-The figure lands in `figures/paoi-ccdf-5g-tsn.pdf`. The reconstruction lives in
-`simulations/analysis/paoi`, shared with the standalone TSN scenario and the
-uplink demo; `simulations/analysis/plot_paoi_ccdf.py` is its general CLI.
+The figure lands in `simulations/analysis/figures/paoi-ccdf-5g-tsn.pdf`. The
+reconstruction lives in `simulations/analysis/paoi`, shared with the standalone
+TSN scenario and the uplink demo; the scenario itself -- which results, which
+receiver, what the curves are called -- is a table entry in
+`simulations/analysis/paoi/scenarios.py`. Pass `--all` to regenerate both
+figures at once.
 
 Peak AoI for a periodic stream is the sampling period plus the delivery delay
 of the update that ends the gap, so a lost update widens the following peak

@@ -55,10 +55,12 @@ are set. Then, from this directory:
 ```
 ../../../bin/nasctime-run.sh -u Cmdenv -c Baseline -f omnetpp.ini
 ../../../bin/nasctime-run.sh -u Cmdenv -c Tas -f omnetpp.ini
-./plot_paoi_ccdf.py
+../../analysis/plot_paoi_ccdf.py --scenario tsn-standalone
 ```
 
-The figure lands in `figures/paoi-ccdf-tsn-standalone.pdf`.
+The figure lands in `simulations/analysis/figures/paoi-ccdf-tsn-standalone.pdf`.
+The scenario -- which results, which receiver, what the curves are called --
+is registered in `simulations/analysis/paoi/scenarios.py`.
 
 ## Reference result (seed 42, 90 s run, 10 s warm-up)
 
@@ -97,10 +99,7 @@ changing the load or the schedule, check that the queue actually reached
 steady state:
 
 ```
-../../analysis/plot_paoi_ccdf.py --module TsnStandaloneNetwork.tsnDeviceC.app[0] \
-    --run "Baseline=results/baseline/Baseline-#0.vec" \
-    --run "TAS=results/tas/Tas-#0.vec" \
-    --check-stationarity --output /tmp/check.pdf
+../../analysis/plot_paoi_ccdf.py --scenario tsn-standalone --check-stationarity
 ```
 
 If a run's second half is visibly worse than its first, the transient is still
