@@ -22,6 +22,7 @@
 #include "inet/linklayer/ieee8021as/GptpPacket_m.h"
 #include "inet/clock/common/ClockTime.h"
 #include "inet/linklayer/common/UserPriorityTag_m.h"
+#include "inet/linklayer/common/PcpTag_m.h"
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/DirectionTag_m.h"
 #include "inet/common/ProtocolUtils.h"
@@ -155,6 +156,9 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
     EV_INFO << "DsTtTranslator: first chunk type = "
                 << pkt->peekAtFront<Chunk>()->getClassName() << endl;
     auto ipCheck = pkt->peekAtFront<Ipv4Header>();
+    int pcp = ipCheck->getDscp();
+    if (pcp < 0 || pcp > 7)
+        pcp = 0;
     EV_INFO << "DsTtTranslator: src=" << ipCheck->getSrcAddress()
             << " dst=" << ipCheck->getDestAddress()
             << " proto=" << ipCheck->getProtocolId() << endl;
@@ -261,6 +265,7 @@ void DsTtTranslator::forwardToTsn(Packet *pkt)
     pkt->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::ethernetMac);
     pkt->addTagIfAbsent<DispatchProtocolReq>()->setServicePrimitive(SP_REQUEST);
     pkt->addTagIfAbsent<DirectionTag>()->setDirection(DIRECTION_OUTBOUND);
+    pkt->addTagIfAbsent<PcpReq>()->setPcp(pcp);
     send(pkt, tsnOutGateId);
 }
 

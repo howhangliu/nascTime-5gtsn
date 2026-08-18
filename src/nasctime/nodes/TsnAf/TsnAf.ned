@@ -45,6 +45,7 @@ simple TsnAf
         string nwTtModule = default("nwTt");
         string dsTtModule = default("dsTt");
         string gnbModule = default("gnb");
+        string tasShaperModules = default("nwTt.ethIf.macLayer.queue,dsTt.tsnEth.macLayer.queue"); // Comma-separated Ieee8021qTimeAwareShaper paths
 
         // --- CNC configuration file ---
         xml cncConfig = default(xml("<cncConfig/>"));

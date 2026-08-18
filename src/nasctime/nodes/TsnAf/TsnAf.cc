@@ -12,6 +12,12 @@
 #include "nasctime/nodes/TsnAf/TsnAf.h"
 
 #include <inet/common/XMLUtils.h>
+#include <omnetpp/cvaluearray.h>
+
+#include <algorithm>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 
 Define_Module(TsnAf);
 
@@ -146,10 +152,23 @@ void TsnAf::parseGateControlList(cXMLElement *tasElem)
 
     cXMLElementList entries = tasElem->getChildrenByTagName("entry");
     for (auto *entryElem : entries) {
+        const char *start = entryElem->getAttribute("start");
+        const char *duration = entryElem->getAttribute("duration");
+        const char *gates = entryElem->getAttribute("gates");
+        if (!start || !duration || !gates)
+            throw cRuntimeError("TsnAf: every gateControlList entry must have start, duration, and gates attributes");
+
         GateControlEntry gce;
-        gce.startTime = SimTime::parse(entryElem->getAttribute("start"));
-        gce.duration = SimTime::parse(entryElem->getAttribute("duration"));
-        gce.gateStates = (uint8_t)atoi(entryElem->getAttribute("gates"));
+        gce.startTime = SimTime::parse(start);
+        gce.duration = SimTime::parse(duration);
+        char *end = nullptr;
+        errno = 0;
+        long gateStates = strtol(gates, &end, 0);
+        if (gce.duration <= SIMTIME_ZERO)
+            throw cRuntimeError("TsnAf: GCL entry at %s has a non-positive duration", start);
+        if (errno != 0 || end == gates || *end != '\0' || gateStates < 0 || gateStates > 255)
+            throw cRuntimeError("TsnAf: invalid 8-bit GCL gate bitmask '%s'", gates);
+        gce.gateStates = static_cast<uint8_t>(gateStates);
 
         gateControlList.push_back(gce);
 
@@ -182,12 +201,87 @@ void TsnAf::applyGateControlList()
     if (gateControlList.empty())
         return;
 
-    // Log the TAS configuration
-    // In a full implementation, this would configure the
-    // TSN Device A's Ieee8021qTimeAwareShaper module
-    EV_INFO << "TsnAf: applying TAS gate control list ("
-            << gateControlList.size() << " entries, cycle="
-            << gateCycleTime << ")" << endl;
+    if (gateCycleTime <= SIMTIME_ZERO)
+        throw cRuntimeError("TsnAf: gate cycle time must be positive");
+    if (numTrafficClasses < 1 || numTrafficClasses > 8)
+        throw cRuntimeError("TsnAf: TAS supports between 1 and 8 traffic classes, got %d", numTrafficClasses);
+
+    std::sort(gateControlList.begin(), gateControlList.end(),
+            [](const GateControlEntry& a, const GateControlEntry& b) { return a.startTime < b.startTime; });
+    simtime_t expectedStart = SIMTIME_ZERO;
+    for (const auto& entry : gateControlList) {
+        if (entry.startTime != expectedStart)
+            throw cRuntimeError("TsnAf: GCL must cover the cycle contiguously; expected an entry at %s but found %s",
+                    expectedStart.str().c_str(), entry.startTime.str().c_str());
+        expectedStart += entry.duration;
+    }
+    if (expectedStart != gateCycleTime)
+        throw cRuntimeError("TsnAf: GCL entries cover %s but cycleTime is %s",
+                expectedStart.str().c_str(), gateCycleTime.str().c_str());
+
+    int configuredShapers = 0;
+    cStringTokenizer shaperPaths(par("tasShaperModules").stringValue(), ",");
+    while (shaperPaths.hasMoreTokens()) {
+        const char *shaperPath = shaperPaths.nextToken();
+        cModule *shaper = getModuleByPath(shaperPath);
+        if (!shaper)
+            throw cRuntimeError("TsnAf: TAS shaper module '%s' was not found", shaperPath);
+        if (!shaper || strcmp(shaper->getNedTypeName(), "inet.linklayer.ieee8021q.Ieee8021qTimeAwareShaper") != 0)
+            throw cRuntimeError("TsnAf: %s is not an Ieee8021qTimeAwareShaper; enable egress traffic shaping on the TT",
+                    shaper->getFullPath().c_str());
+
+        int gateCount = shaper->getSubmoduleVectorSize("transmissionGate");
+        if (gateCount != numTrafficClasses)
+            throw cRuntimeError("TsnAf: %s has %d transmission gates but TsnAf numTrafficClasses is %d",
+                    shaper->getFullPath().c_str(), gateCount, numTrafficClasses);
+
+        for (int gateIndex = 0; gateIndex < gateCount; ++gateIndex) {
+            cModule *gate = shaper->getSubmodule("transmissionGate", gateIndex);
+            if (!gate || strcmp(gate->getNedTypeName(), "inet.queueing.gate.PeriodicGate") != 0)
+                throw cRuntimeError("TsnAf: transmissionGate[%d] in %s is not a PeriodicGate",
+                        gateIndex, shaper->getFullPath().c_str());
+
+            bool initiallyOpen = (gateControlList.front().gateStates & (1u << gateIndex)) != 0;
+            bool currentState = initiallyOpen;
+            double currentDuration = 0;
+            double trailingDuration = 0;
+            auto *durations = new cValueArray();
+
+            // PeriodicGate alternates state after each duration. Coalesce
+            // adjacent GCL entries with the same state, then merge a final
+            // run into the first when the state is unchanged across the
+            // cycle boundary. The offset keeps time zero at the GCL origin.
+            for (const auto& entry : gateControlList) {
+                bool entryState = (entry.gateStates & (1u << gateIndex)) != 0;
+                if (entryState != currentState) {
+                    durations->add(cValue(currentDuration, "s"));
+                    currentState = entryState;
+                    currentDuration = 0;
+                }
+                currentDuration += entry.duration.dbl();
+            }
+
+            if (durations->size() % 2 != 0)
+                durations->add(cValue(currentDuration, "s"));
+            else if (durations->size() != 0) {
+                trailingDuration = currentDuration;
+                durations->set(0, cValue(durations->get(0).doubleValueInUnit("s") + trailingDuration, "s"));
+            }
+
+            cPar& durationsParameter = gate->par("durations");
+            durationsParameter.copyIfShared();
+            durationsParameter.setObjectValue(durations);
+            gate->par("initiallyOpen").setBoolValue(initiallyOpen);
+            gate->par("offset").setDoubleValue(trailingDuration);
+        }
+
+        configuredShapers++;
+        EV_INFO << "TsnAf: applied " << gateControlList.size() << " GCL entries to "
+                << shaper->getFullPath() << " (cycle=" << gateCycleTime << ")" << endl;
+    }
+
+    if (configuredShapers == 0)
+        throw cRuntimeError("TsnAf: tasShaperModules does not contain any module paths");
 }
 
 int TsnAf::getQfiForPcp(int pcp) const

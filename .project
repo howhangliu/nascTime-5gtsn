@@ -3,8 +3,8 @@
 	<name>nascTime</name>
 	<comment></comment>
 	<projects>
-		<project>inet-4.6.0</project>
-		<project>Simu5G</project>
+		<project>inet</project>
+		<project>simu5g</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -20,13 +20,14 @@
 #include "inet/common/packet/chunk/BytesChunk.h"
 #include "inet/linklayer/common/MacAddressTag_m.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
+#include "inet/linklayer/common/PcpTag_m.h"
 #include "inet/linklayer/ethernet/common/EthernetMacHeader_m.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
+#include "inet/networklayer/common/DscpTag_m.h"
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "simu5g/common/binder/Binder.h"
 #include "inet/transportlayer/udp/UdpHeader_m.h"
-#include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/linklayer/ieee8021q/Ieee8021qTagHeader_m.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/common/IProtocolRegistrationListener.h"
@@ -341,8 +342,13 @@ void NwTtTranslator::handleIpPacket(Packet *pkt)
 {
     simtime_t t0 = simTime();
 
-    // UdpSocket has stripped the UDP header.
-    // Remaining payload is the raw TSN frame body.
+    // IPv4 and UDP decapsulation preserve DSCP as an indication tag. The
+    // packet data starts at the application payload here, so it must not be
+    // interpreted as an IPv4 header.
+    auto dscpInd = pkt->findTag<DscpInd>();
+    int pcp = dscpInd ? dscpInd->getDifferentiatedServicesCodePoint() : 0;
+    if (pcp < 0 || pcp > 7)
+        pcp = 0;
     auto payload = pkt->peekData();
 
     // Create Ethernet frame for the TSN side
@@ -356,6 +362,7 @@ void NwTtTranslator::handleIpPacket(Packet *pkt)
 
     // Set protocol tag for EtherType
     ethPkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ipv4);
+    ethPkt->addTagIfAbsent<PcpReq>()->setPcp(pcp);
 
     // Send toward TSN switch
     send(ethPkt, ethOutGateId);

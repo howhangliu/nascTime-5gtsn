@@ -1,0 +1,18 @@
+<cncConfig>
+    <streams>
+        <stream id="1" pcp="6" drb="0" maxLatencyMs="25" bandwidthKbps="160"/>
+        <stream id="2" pcp="0" drb="0" maxLatencyMs="100" bandwidthKbps="20000"/>
+    </streams>
+
+    <!-- Repeating 10 ms cycle:
+         0..1 ms:  only critical gate 6 is open (64 = 1 &lt;&lt; 6)
+         1..9 ms:  only best-effort gate 1 is open (2 = 1 &lt;&lt; 1).
+                    INET's IEEE 802.1Q mapping assigns PCP 0 to traffic class 1
+                    when eight traffic classes are present.
+         9..10 ms: all gates are closed. -->
+    <gateControlList cycleTime="10ms">
+        <entry start="0ms" duration="1ms" gates="64"/>
+        <entry start="1ms" duration="8ms" gates="2"/>
+        <entry start="9ms" duration="1ms" gates="0"/>
+    </gateControlList>
+</cncConfig>

@@ -24,6 +24,9 @@ module DsTt
         @networkNode();
         *.interfaceTableModule = default(absPath(".interfaceTable"));
 
+        bool hasEgressTrafficShaping = default(false); // Enable IEEE 802.1Qbv on the TSN-facing Ethernet egress
+        tsnEth.macLayer.queue.typename = default(hasEgressTrafficShaping ? "Ieee8021qTimeAwareShaper" : "PacketQueue");
+
         // --- FRER (IEEE 802.1CB) ---
         // DL FRER: recovery between ueLi and translator.ueIn
         bool frerEnabled = default(false);

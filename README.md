@@ -526,6 +526,13 @@ simulations/demos/ext_multiendpoint_test/  Scalability sweep, heterogeneous traf
 ├── fading.csv                           Fading trace input
 └── analyze_primary.py, parse_results.py, vec_parse.py   Result post-processing
 
+simulations/demos/tas_comparison/       FIFO baseline versus CNC-controlled TT TAS
+├── TasComparisonNetwork.ned
+├── omnetpp.ini                          configs Baseline and Tas
+├── cnc_baseline.xml / cnc_tas.xml
+├── ip_config.xml
+└── README.md                            Run and result-comparison guide
+
 simulations/demos/frer_test/            FRER validation (F1-F4)
 ├── frer_uplink.ini                      Bidirectional replication/recovery (FrerBidirectional_N1)
 ├── frer_intersession.ini                Inter-PDU-session transport diversity (FrerInterSession_N15)
@@ -745,13 +752,10 @@ re-record them and for the known debug-library limitation.
 
 ## Known Limitations
 
-1. **TSN AF TAS gate control** parsed and logged but not programmatically
-   applied to TSN Device A's `Ieee8021qTimeAwareShaper`.
-
-2. **Static BMCA** validates topology but does not dynamically reconfigure
+1. **Static BMCA** validates topology but does not dynamically reconfigure
    gPTP port roles. INET's `Gptp` module does not support dynamic BMCA.
 
-3. **No dedicated DRB-enabled UE variant.** Multi-DRB QoS is configured on the
+2. **No dedicated DRB-enabled UE variant.** Multi-DRB QoS is configured on the
    stock `NRUeDsTt` via `cellularNic.hasSdap = true` plus a `drbConfig` list;
    there is no separate `NRUeDsTtDrb` module.
 

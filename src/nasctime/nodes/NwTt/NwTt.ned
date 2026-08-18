@@ -38,6 +38,9 @@ module NwTt extends NetworkLayerNodeBase
         string ueAddress;
         string localAddress;
 
+        bool hasEgressTrafficShaping = default(false); // Enable IEEE 802.1Qbv on the TSN-facing Ethernet egress
+        ethIf.macLayer.queue.typename = default(hasEgressTrafficShaping ? "Ieee8021qTimeAwareShaper" : "PacketQueue");
+
 		// --- FRER (IEEE 802.1CB) ---
         // DL FRER
         bool frerEnabled = default(false);
