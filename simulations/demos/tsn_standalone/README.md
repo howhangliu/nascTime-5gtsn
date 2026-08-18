@@ -55,7 +55,7 @@ are set. Then, from this directory:
 ```
 ../../../bin/nasctime-run.sh -u Cmdenv -c Baseline -f omnetpp.ini
 ../../../bin/nasctime-run.sh -u Cmdenv -c Tas -f omnetpp.ini
-../../analysis/plot_paoi_ccdf.py --scenario tsn-standalone
+../../analysis/plot_aoi.py --scenario tsn-standalone
 ```
 
 The figure lands in `simulations/analysis/figures/paoi-ccdf-tsn-standalone.pdf`.
@@ -104,7 +104,7 @@ changing the load or the schedule, check that the queue actually reached
 steady state:
 
 ```
-../../analysis/plot_paoi_ccdf.py --scenario tsn-standalone --check-stationarity
+../../analysis/plot_aoi.py --scenario tsn-standalone --check-stationarity
 ```
 
 If a run's second half is visibly worse than its first, the transient is still

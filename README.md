@@ -567,7 +567,7 @@ age of information from `.vec` files, and one CLI over a registry of the
 figures this project publishes.
 
 ```bash
-simulations/analysis/plot_paoi_ccdf.py --all
+simulations/analysis/plot_aoi.py --all
 ```
 
 The raw `.vec` files are too large to track, so each run's receptions are

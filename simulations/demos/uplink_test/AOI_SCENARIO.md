@@ -48,33 +48,30 @@ The repetition number may be different if multiple runs are retained.
 
 ## Generate the AoI plot
 
-The analyzer requires Python 3 and Matplotlib. Install Matplotlib if needed:
+The plotter requires Python 3 and Matplotlib. Install Matplotlib if needed:
 
 ```bash
 python3 -m pip install matplotlib
 ```
 
-From `simulations/demos/uplink_test`, analyze the primary periodic stream:
+The run is registered as a scenario, so from anywhere in the repository:
 
 ```bash
-python3 analyze_aoi.py \
-  "results/uplink/UplinkSinrFailoverAoI-#0.vec" \
-  --stream 0 \
-  --bad-at 1 \
-  --switch-at 2 \
-  --max-time 3
+simulations/analysis/plot_aoi.py --scenario uplink-failover
 ```
 
-Use `--stream 1` for the best-effort stream. The script creates:
+`--scenario uplink-failover-be` draws the best-effort stream instead.
+`--mode peaks --window 50` plots peak AoI against time with a running mean,
+and `--mode ccdf` its distribution. Figures land in
+`simulations/analysis/figures/`.
 
-```text
-UplinkSinrFailoverAoI-#0-aoi-stream0.png
-UplinkSinrFailoverAoI-#0-aoi-stream0.peaks.csv
-```
+Both scenarios read `results/uplink/UplinkSinrFailoverAoI-#0.vec` when it is
+present, and fall back to the committed dataset in
+`simulations/analysis/data/` otherwise -- so the figures redraw without
+re-running the simulation. See `simulations/analysis/README.md`.
 
-It also prints the number of received updates and the mean and maximum peak
-AoI. The CSV retains the peak measurements even though peak markers are not
-drawn on the plot.
+Every mode prints the received-update count and the mean, p99 and maximum
+peak AoI, broken down by scenario phase.
 
 ## AoI calculation
 

@@ -72,7 +72,7 @@ delay.
 
 ## Peak age of information
 
-`simulations/analysis/plot_paoi_ccdf.py` draws the CCDF of the critical
+`simulations/analysis/plot_aoi.py` draws the CCDF of the critical
 stream's peak AoI for both configurations on one set of axes:
 
 Source the OMNeT++, INET, Simu5G and nascTime `setenv` scripts first (see the
@@ -82,7 +82,7 @@ are set. Then, from this directory:
 ```
 ../../../bin/nasctime-run.sh -u Cmdenv -c Baseline -f omnetpp.ini
 ../../../bin/nasctime-run.sh -u Cmdenv -c Tas -f omnetpp.ini
-../../analysis/plot_paoi_ccdf.py --scenario 5g-tsn
+../../analysis/plot_aoi.py --scenario 5g-tsn
 ```
 
 The figure lands in `simulations/analysis/figures/paoi-ccdf-5g-tsn.pdf`. The

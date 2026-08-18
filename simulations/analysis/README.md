@@ -5,7 +5,7 @@ simulation; it all reads the `.vec` files a run leaves behind.
 
 ```
 analysis/
-├── plot_paoi_ccdf.py     The only CCDF entry point
+├── plot_aoi.py           The only plotting entry point
 ├── paoi/                 The library
 │   ├── vectors.py        Reads OMNeT++ .vec files
 │   ├── aoi.py            Reconstructs age of information from the vectors
@@ -25,25 +25,64 @@ reconstruction, and registering a figure never touches the styling.
 ## Regenerating a figure
 
 ```bash
-./plot_paoi_ccdf.py --scenario 5g-tsn
-./plot_paoi_ccdf.py --all
+./plot_aoi.py --scenario 5g-tsn
+./plot_aoi.py --all
 ```
 
 Paths in the registry are anchored at the `simulations` tree, so these work
-from any directory. Output goes to `figures/paoi-ccdf-<scenario>.pdf` and
-`.png`.
+from any directory. Output goes to `figures/paoi-<mode>-<scenario>.pdf`
+and `.png`.
 
 This works in a fresh clone, with no simulation run and no result files. See
 "Datasets" below.
 
 Registered scenarios:
 
-| Name | Demo | Critical-stream receiver |
-|---|---|---|
-| `5g-tsn` | `demos/tas_comparison` | `TasComparisonNetwork.tsnDeviceB.app[0]` |
-| `tsn-standalone` | `demos/tsn_standalone` | `TsnStandaloneNetwork.tsnDeviceC.app[0]` |
+| Name | Demo | Default mode | What it shows |
+|---|---|---|---|
+| `5g-tsn` | `demos/tas_comparison` | `ccdf` | critical stream, Baseline vs TAS |
+| `tsn-standalone` | `demos/tsn_standalone` | `ccdf` | critical stream, Baseline vs TAS |
+| `uplink-failover` | `demos/uplink_test` | `timeline` | critical stream through SINR loss and failover |
+| `uplink-failover-be` | `demos/uplink_test` | `timeline` | the same run's best-effort stream |
 
-Each draws two curves from the demo's `Baseline` and `Tas` configurations.
+## Modes
+
+Each scenario has a default figure, which `--mode` overrides:
+
+| Mode | Figure |
+|---|---|
+| `ccdf` | the peak-AoI distribution, one curve per run |
+| `timeline` | the AoI sawtooth against simulation time |
+| `peaks` | peak AoI against time, one marker per reception |
+| `both` | the sawtooth with its peaks marked |
+
+`peaks` draws markers rather than a line on purpose: peak AoI has no value
+between receptions, so joining the points would invent one. `--window N`
+overlays a running mean over N consecutive samples — at ~1000 receptions per
+second, `--window 50` smooths over roughly 50 ms.
+
+```bash
+./plot_aoi.py --scenario uplink-failover --mode peaks --window 50
+./plot_aoi.py --scenario 5g-tsn --mode timeline --only TAS
+```
+
+`--only TEXT` keeps just the runs whose label contains TEXT.
+
+## Phases
+
+A scenario can name the stretches of its run — `Phase(start, end, label,
+color)` in the registry. Timelines band them, and every mode reports
+per-phase peak-AoI statistics, which for an event-driven run is the whole
+contrast:
+
+```
+0-1s healthy active path:    n=975 mean=13.832 ms p99=48.180 ms max=58.163 ms
+1-2s degraded active path:   n=784 mean=33.870 ms p99=44.663 ms max=49.673 ms
+2-3s traffic on standby path: n=993 mean=14.533 ms p99=47.201 ms max=56.163 ms
+```
+
+A phase with `shade=False` is reported but not banded — the stretch a run
+starts from is the reference, not an event.
 
 ## Datasets
 
@@ -70,7 +109,7 @@ After re-running a simulation, refresh the datasets and commit them
 alongside the figures:
 
 ```bash
-./plot_paoi_ccdf.py --all --export
+./plot_aoi.py --all --export
 ```
 
 ## Adding a scenario
@@ -79,7 +118,7 @@ Add an entry to `SCENARIOS` in `paoi/scenarios.py`. It becomes a `--scenario`
 choice automatically; no new script is needed. A demo whose result layout
 matches the usual `results/baseline` + `results/tas` pair is a one-liner via
 `_tas_comparison_runs`, which also names its datasets. Then run
-`./plot_paoi_ccdf.py --scenario <name> --export` and commit the result, so
+`./plot_aoi.py --scenario <name> --export` and commit the result, so
 the new figure is reproducible without the raw results.
 
 ## One-off figures
@@ -87,7 +126,7 @@ the new figure is reproducible without the raw results.
 For anything not worth registering, describe the curves on the command line:
 
 ```bash
-./plot_paoi_ccdf.py --module TsnStandaloneNetwork.tsnDeviceC.app[0] \
+./plot_aoi.py --module TsnStandaloneNetwork.tsnDeviceC.app[0] \
     --run "Baseline=../demos/tsn_standalone/results/baseline/Baseline-#0.vec" \
     --run "TAS=../demos/tsn_standalone/results/tas/Tas-#0.vec" \
     --output /tmp/check.pdf
@@ -105,9 +144,9 @@ colours, the `rcParams` block for fonts and axis ink, and
 `CcdfFigure.__init__` / `finish` for the axes, grid, legend and p99 marker.
 Both published figures follow a change there.
 
-## Timelines
+## Restyling a timeline
 
-`demos/uplink_test/analyze_aoi.py` draws the AoI sawtooth against simulation
-time rather than a CCDF, using `AoiTimelineFigure` from the same library. It
-stays a separate script because its figure is annotated with scenario events
-(the SINR drop, the leg switch) that no other run has.
+`AoiTimelineFigure` in `paoi/plots.py` carries the sawtooth (`add`), the peak
+markers (`add_peaks`) and the running mean (`add_trend`); `PEAK_COLOR` and
+`TREND_COLOR` beside `SERIES_COLORS` are the two marks a timeline adds. Phase
+band colours are per-scenario, in the registry.

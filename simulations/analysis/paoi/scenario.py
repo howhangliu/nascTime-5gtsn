@@ -2,12 +2,31 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .aoi import AoiTrace, PeakAoiSeries
 from .dataset import read_receptions, write_receptions
 from .vectors import VectorFile
+
+
+@dataclass(frozen=True)
+class Phase:
+    """A labelled stretch of a run: what was happening, and how to shade it.
+
+    Phases are what makes an event-driven scenario readable -- the figure
+    bands them, and the per-phase peak-AoI statistics are the contrast the
+    scenario exists to show.
+    """
+
+    start: float
+    end: float
+    label: str
+    color: str
+    #: Whether to shade this phase on a timeline. The stretch a scenario
+    #: starts from is the reference, not an event, so it reads better
+    #: unshaded -- and a band cannot then be mistaken for a curve.
+    shade: bool = True
 
 
 @dataclass(frozen=True)
@@ -66,6 +85,24 @@ class Scenario:
     name: str
     title: str
     runs: tuple[RunSpec, ...]
+    phases: tuple[Phase, ...] = ()
+    #: The figure this scenario publishes when --mode is not given.
+    default_mode: str = "ccdf"
+    #: Where the run ends, for scenarios whose figure needs an x limit.
+    end_time: float | None = None
+
+    def select(self, patterns: list[str] | None) -> "Scenario":
+        """The same scenario narrowed to runs whose label matches a pattern."""
+        if not patterns:
+            return self
+        lowered = [pattern.lower() for pattern in patterns]
+        kept = tuple(run for run in self.runs
+                     if any(pattern in run.label.lower() for pattern in lowered))
+        if not kept:
+            raise ValueError(
+                f"no run in '{self.name}' matches {patterns}; "
+                f"it has: {', '.join(run.label for run in self.runs)}")
+        return replace(self, runs=kept)
 
     def peak_series(self, end_time: float | None = None) -> list[PeakAoiSeries]:
         return [run.peak_series(end_time) for run in self.runs]

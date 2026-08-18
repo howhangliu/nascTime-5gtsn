@@ -23,6 +23,11 @@ SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100",
 TEXT_PRIMARY = "#0b0b0b"
 TEXT_SECONDARY = "#52514e"
 
+# Slots reserved for the two extra marks a timeline can carry, so they never
+# collide with the curve colours a scenario's runs take from SERIES_COLORS.
+PEAK_COLOR = "#eb6834"
+TREND_COLOR = "#4a3aa7"
+
 # Papers want selectable text, not outlines: type 42 embeds real TrueType.
 plt.rcParams.update({
     "pdf.fonttype": 42,
@@ -34,6 +39,26 @@ plt.rcParams.update({
     "xtick.color": TEXT_SECONDARY,
     "ytick.color": TEXT_SECONDARY,
 })
+
+
+def moving_average(times: list[float], values: list[float], window: int):
+    """Centred running mean over `window` consecutive samples.
+
+    Peak AoI is one sample per reception, not a signal on a regular grid, so
+    the window counts samples rather than seconds. At ~1000 receptions per
+    second a window of 50 smooths over roughly 50 ms.
+    """
+    if window < 2 or len(values) < window:
+        return [], []
+    half = window // 2
+    running = sum(values[:window])
+    smoothed_times = [times[half]]
+    smoothed_values = [running / window]
+    for i in range(window, len(values)):
+        running += values[i] - values[i - window]
+        smoothed_times.append(times[i - half])
+        smoothed_values.append(running / window)
+    return smoothed_times, smoothed_values
 
 
 class Figure:
@@ -109,11 +134,17 @@ class CcdfFigure(Figure):
 
 
 class AoiTimelineFigure(Figure):
-    """The AoI sawtooth against simulation time, with optional event bands."""
+    """Age against simulation time, with optional peaks, trend and event bands.
 
-    def __init__(self, title: str, figsize: tuple[float, float] = (16.0, 5.5)):
+    Three marks can share these axes, which is what the AoI/PAoI/both modes
+    are: ``add`` draws the continuous sawtooth, ``add_peaks`` draws only the
+    tip of each ramp, and ``add_trend`` smooths those tips.
+    """
+
+    def __init__(self, title: str, figsize: tuple[float, float] = (16.0, 5.5),
+                 ylabel: str = "Age of Information (ms)"):
         super().__init__(title, figsize)
-        self.axes.set(xlabel="Simulation time (s)", ylabel="Age of Information (ms)")
+        self.axes.set(xlabel="Simulation time (s)", ylabel=ylabel)
         self.axes.grid(True, alpha=0.25)
         self.axes.set_axisbelow(True)
 
@@ -121,6 +152,28 @@ class AoiTimelineFigure(Figure):
         x, y = zip(*trace.points)
         self.axes.plot(x, [value * 1000 for value in y],
                        color=color or self._next_color(), linewidth=1.0, label=label)
+
+    def add_peaks(self, trace, label: str = "peak AoI",
+                  color: str | None = None) -> None:
+        """The peaks as markers, never as a line.
+
+        Peak AoI has no value between receptions, so joining the points would
+        invent one.
+        """
+        self.axes.plot([peak.time for peak in trace.peaks],
+                       [peak.value * 1000 for peak in trace.peaks],
+                       linestyle="none", marker=".", markersize=3.0,
+                       color=color or PEAK_COLOR, label=label)
+
+    def add_trend(self, trace, window: int, label: str | None = None,
+                  color: str | None = None) -> None:
+        times, values = moving_average([peak.time for peak in trace.peaks],
+                                       [peak.value * 1000 for peak in trace.peaks],
+                                       window)
+        if not times:
+            return
+        self.axes.plot(times, values, color=color or TREND_COLOR, linewidth=1.8,
+                       label=label or f"running mean ({window} samples)")
 
     def mark_span(self, start: float, end: float, label: str, color: str) -> None:
         self.axes.axvspan(start, end, color=color, alpha=0.10, label=label)
