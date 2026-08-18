@@ -21,9 +21,16 @@ in traffic class 1 and PCP 6 in traffic class 6. Both QFIs share DRB 0 in this
 demo so the measured difference comes from Ethernet priority and TAS.
 
 The DS-TT-to-device link is intentionally limited to 10 Mbps while the mean
-best-effort offered load is about 21.6 Mbps. This creates repeatable contention:
+best-effort offered load is about 9.6 Mbps. This creates repeatable contention:
 the baseline FIFO delays critical packets behind large background packets,
 whereas TAS gives critical traffic an exclusive transmission window.
+
+The load is deliberately just below capacity rather than above it. At ~0.98
+utilisation the queue is heavily congested but stable, so delay and peak AoI
+have distributions to measure. Overloading the link (an earlier revision
+offered 21.6 Mbps) destroys that: the backlog grows for the whole run, and
+every quantile becomes a function of `sim-time-limit` rather than a property of
+the system.
 
 ## How TAS is added
 
@@ -63,19 +70,46 @@ final millisecond. Critical packets generated every 10 ms are aligned with the
 same cycle period; their actual gate arrival phase also includes 5G transit
 delay.
 
-## Reference result (seed 42)
+## Peak age of information
 
-The checked configuration was run for 2 s with a 100 ms warm-up. The recorded
-results show that TAS is active and isolates the critical stream, although its
-latency includes one or occasionally two 10 ms gate cycles:
+`plot_paoi_ccdf.py` draws the CCDF of the critical stream's peak AoI for both
+configurations on one set of axes:
 
-| Metric | Baseline | TAS |
+```
+../../../bin/nasctime-run -u Cmdenv -c Baseline -f omnetpp.ini
+../../../bin/nasctime-run -u Cmdenv -c Tas -f omnetpp.ini
+./plot_paoi_ccdf.py
+```
+
+The figure lands in `figures/paoi-ccdf-5g-tsn.pdf`. The reconstruction lives in
+`simulations/analysis/paoi`, shared with the standalone TSN scenario and the
+uplink demo; `simulations/analysis/plot_paoi_ccdf.py` is its general CLI.
+
+Peak AoI for a periodic stream is the sampling period plus the delivery delay
+of the update that ends the gap, so a lost update widens the following peak
+instead of producing one of its own.
+
+## Reference result (seed 42, 90 s run, 10 s warm-up)
+
+Peak AoI of the critical stream, in milliseconds:
+
+| | Baseline | TAS |
 |---|---:|---:|
-| Critical packets received | 80 | 178 |
-| Critical mean / maximum delay | 508.5 / 1038.1 ms | 12.55 / 20.20 ms |
-| Best-effort packets received | 1691 | 1316 |
-| Best-effort mean / maximum delay | 524.1 / 1039.1 ms | 619.5 / 1235.5 ms |
+| samples | 7967 | 7973 |
+| mean | 38.9 | 20.8 |
+| p99 | 96.3 | 40.2 |
+| maximum | 110.5 | 50.2 |
+
+TAS halves the mean and cuts the 99th percentile by 2.4x, and -- the point of
+plotting a CCDF rather than a mean -- it bounds the tail: the TAS curve is a
+staircase whose steps are whole 10 ms gate cycles, ending at 50 ms, while the
+baseline runs smoothly out past 110 ms. The staircase is the gate cycle showing
+through: variable 5G transit randomises the phase at which a critical packet
+reaches the DS-TT gate, so it waits an integer number of cycles.
 
 The trade-off is intentional: the critical class gets a protected 1 ms window,
-while the overloaded best-effort class receives less service. Gate vectors also
-confirm that class 6 is open from 0–1 ms and class 1 from 1–9 ms in each cycle.
+while the best-effort class receives less service under TAS (its 8 ms window
+caps it at 8 Mbps, below the 9.6 Mbps offered).
+
+See [`../tsn_standalone`](../tsn_standalone) for the same experiment without the
+5G bridge, where the talker happens to be phase-aligned with the gate cycle.

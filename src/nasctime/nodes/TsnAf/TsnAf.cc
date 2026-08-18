@@ -21,6 +21,25 @@
 
 Define_Module(TsnAf);
 
+namespace {
+
+// A pure-TSN deployment has no 5GS for the AF to reference, so an empty path
+// means "this component is not present" and leaves the pointer null. A
+// non-empty path that does not resolve stays an error: getModuleByPath()
+// throws on a typo, and losing that would turn a misspelled module name into a
+// silently unconfigured bridge.
+cModule *findOptionalModule(cModule *context, const char *path, const char *role)
+{
+    if (path == nullptr || *path == '\0')
+        return nullptr;
+    cModule *module = context->findModuleByPath(path);
+    if (module == nullptr)
+        throw cRuntimeError("TsnAf: %s module '%s' was not found", role, path);
+    return module;
+}
+
+}  // namespace
+
 void TsnAf::initialize(int stage)
 {
     cSimpleModule::initialize(stage);
@@ -45,10 +64,11 @@ void TsnAf::initialize(int stage)
                 << " traffic classes, port speed " << portSpeedBps / 1e9 << " Gbps" << endl;
     }
     else if (stage == INITSTAGE_APPLICATION_LAYER) {
-        // Find bridge modules
-        nwTtModule = getModuleByPath(par("nwTtModule").stringValue());
-        dsTtModule = getModuleByPath(par("dsTtModule").stringValue());
-        gnbModule = getModuleByPath(par("gnbModule").stringValue());
+        // Find bridge modules. All three are optional: the standalone TSN
+        // scenario reuses this module purely to program a switch's shaper.
+        nwTtModule = findOptionalModule(this, par("nwTtModule").stringValue(), "NW-TT");
+        dsTtModule = findOptionalModule(this, par("dsTtModule").stringValue(), "DS-TT");
+        gnbModule = findOptionalModule(this, par("gnbModule").stringValue(), "gNB");
 
         // Subscribe to DS-TT residence time signal
         if (dsTtModule) {

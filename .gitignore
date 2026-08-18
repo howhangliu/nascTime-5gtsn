@@ -1,3 +1,7 @@
+# Python analysis tooling
+__pycache__/
+*.pyc
+
 # OS / editor
 .DS_Store
 ._*
