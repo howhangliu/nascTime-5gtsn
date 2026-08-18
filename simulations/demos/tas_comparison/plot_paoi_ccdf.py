@@ -3,8 +3,8 @@
 
 Run both configurations first, then this script::
 
-    ../../../bin/nasctime-run -u Cmdenv -c Baseline -f omnetpp.ini
-    ../../../bin/nasctime-run -u Cmdenv -c Tas -f omnetpp.ini
+    ../../../bin/nasctime-run.sh -u Cmdenv -c Baseline -f omnetpp.ini
+    ../../../bin/nasctime-run.sh -u Cmdenv -c Tas -f omnetpp.ini
     ./plot_paoi_ccdf.py
 """
 

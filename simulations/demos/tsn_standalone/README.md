@@ -48,9 +48,13 @@ traffic class 1 and PCP 6 in traffic class 6 — the classes the GCL opens.
 
 ## Run and plot
 
+Source the OMNeT++, INET, Simu5G and nascTime `setenv` scripts first (see the
+top-level README) so that `opp_run` is on `PATH` and `INET_ROOT` / `SIMU5G_ROOT`
+are set. Then, from this directory:
+
 ```
-../../../bin/nasctime-run -u Cmdenv -c Baseline -f omnetpp.ini
-../../../bin/nasctime-run -u Cmdenv -c Tas -f omnetpp.ini
+../../../bin/nasctime-run.sh -u Cmdenv -c Baseline -f omnetpp.ini
+../../../bin/nasctime-run.sh -u Cmdenv -c Tas -f omnetpp.ini
 ./plot_paoi_ccdf.py
 ```
 
