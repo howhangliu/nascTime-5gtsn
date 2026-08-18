@@ -18,6 +18,7 @@ from .scenario import RunSpec, Scenario
 SIMULATIONS_DIR = Path(__file__).resolve().parents[2]
 DEMOS_DIR = SIMULATIONS_DIR / "demos"
 FIGURES_DIR = SIMULATIONS_DIR / "analysis" / "figures"
+DATA_DIR = SIMULATIONS_DIR / "analysis" / "data"
 
 # Both demos ship the same pair of configurations, and OMNeT++ names result
 # files after the config, so the two result paths follow from the demo alone.
@@ -25,12 +26,18 @@ BASELINE_VEC = "results/baseline/Baseline-#0.vec"
 TAS_VEC = "results/tas/Tas-#0.vec"
 
 
-def _tas_comparison_runs(demo: str, receiver: str) -> tuple[RunSpec, ...]:
-    """The Baseline/TAS pair for one demo directory."""
+def _tas_comparison_runs(name: str, demo: str, receiver: str) -> tuple[RunSpec, ...]:
+    """The Baseline/TAS pair for one demo directory.
+
+    Each run names both sources: the untracked ``.vec`` it was measured from,
+    and the committed dataset that stands in for it after a fresh clone.
+    """
     root = DEMOS_DIR / demo
     return (
-        RunSpec(root / BASELINE_VEC, receiver, "Baseline (FIFO)"),
-        RunSpec(root / TAS_VEC, receiver, "TAS"),
+        RunSpec(root / BASELINE_VEC, receiver, "Baseline (FIFO)",
+                DATA_DIR / f"{name}-baseline.csv.gz"),
+        RunSpec(root / TAS_VEC, receiver, "TAS",
+                DATA_DIR / f"{name}-tas.csv.gz"),
     )
 
 
@@ -41,13 +48,14 @@ SCENARIOS: dict[str, Scenario] = {
             name="5g-tsn",
             title="Critical stream over the 5G-TSN bridge",
             runs=_tas_comparison_runs(
-                "tas_comparison", "TasComparisonNetwork.tsnDeviceB.app[0]"),
+                "5g-tsn", "tas_comparison", "TasComparisonNetwork.tsnDeviceB.app[0]"),
         ),
         Scenario(
             name="tsn-standalone",
             title="Critical stream across a standalone TSN switch",
             runs=_tas_comparison_runs(
-                "tsn_standalone", "TsnStandaloneNetwork.tsnDeviceC.app[0]"),
+                "tsn-standalone", "tsn_standalone",
+                "TsnStandaloneNetwork.tsnDeviceC.app[0]"),
         ),
     )
 }

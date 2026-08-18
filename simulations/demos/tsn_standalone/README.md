@@ -62,6 +62,11 @@ The figure lands in `simulations/analysis/figures/paoi-ccdf-tsn-standalone.pdf`.
 The scenario -- which results, which receiver, what the curves are called --
 is registered in `simulations/analysis/paoi/scenarios.py`.
 
+The figure can also be redrawn without running anything: the receptions
+behind it are committed as a ~100 KB dataset under
+`simulations/analysis/data/`, which the plotter falls back to when
+`results/` is absent. Re-export it with `--export` after a fresh run.
+
 ## Reference result (seed 42, 90 s run, 10 s warm-up)
 
 Peak AoI of the critical stream, in milliseconds:

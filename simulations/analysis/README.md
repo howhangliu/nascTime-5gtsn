@@ -11,7 +11,9 @@ analysis/
 │   ├── aoi.py            Reconstructs age of information from the vectors
 │   ├── plots.py          Figure classes -- all styling lives here
 │   ├── scenario.py       RunSpec / Scenario: what one curve, one figure is
-│   └── scenarios.py      The registry: the figures this project publishes
+│   ├── scenarios.py      The registry: the figures this project publishes
+│   └── dataset.py        The committed extract of a run's receptions
+├── data/                 Those extracts -- ~200 KB, tracked in git
 └── figures/              Generated PDFs and PNGs
 ```
 
@@ -31,6 +33,9 @@ Paths in the registry are anchored at the `simulations` tree, so these work
 from any directory. Output goes to `figures/paoi-ccdf-<scenario>.pdf` and
 `.png`.
 
+This works in a fresh clone, with no simulation run and no result files. See
+"Datasets" below.
+
 Registered scenarios:
 
 | Name | Demo | Critical-stream receiver |
@@ -39,15 +44,43 @@ Registered scenarios:
 | `tsn-standalone` | `demos/tsn_standalone` | `TsnStandaloneNetwork.tsnDeviceC.app[0]` |
 
 Each draws two curves from the demo's `Baseline` and `Tas` configurations.
-Run both configurations first -- see the demo's own README -- since
-`results/` is not tracked in git.
+
+## Datasets
+
+A 90 s run leaves an 8-12 MB `.vec` file, and `results/` is not tracked in
+git -- too large to push, and a collaborator who cannot fetch it cannot
+redraw the figure. So each run names two sources:
+
+| | Path | Size | In git |
+|---|---|---|---|
+| Raw results | `demos/<demo>/results/…/*.vec` | 8-12 MB | no |
+| Dataset | `data/<scenario>-<config>.csv.gz` | 29-83 KB | **yes** |
+
+A run reads its `.vec` when one is present and falls back to the dataset
+otherwise, so whoever just ran the simulation and whoever only cloned the
+repository get the same numbers -- exactly the same, not merely close: the
+dataset stores `repr` of each float, which reads back as the same double.
+
+The dataset holds the receptions (time, delay, sequence), not the finished
+CCDF, so quantiles, the stationarity split and the AoI timeline are all still
+derivable from it. Only the diagnostics that no figure reads -- queue
+occupancy, gate state, the best-effort sink -- stay behind in the `.vec`.
+
+After re-running a simulation, refresh the datasets and commit them
+alongside the figures:
+
+```bash
+./plot_paoi_ccdf.py --all --export
+```
 
 ## Adding a scenario
 
 Add an entry to `SCENARIOS` in `paoi/scenarios.py`. It becomes a `--scenario`
 choice automatically; no new script is needed. A demo whose result layout
 matches the usual `results/baseline` + `results/tas` pair is a one-liner via
-`_tas_comparison_runs`.
+`_tas_comparison_runs`, which also names its datasets. Then run
+`./plot_paoi_ccdf.py --scenario <name> --export` and commit the result, so
+the new figure is reproducible without the raw results.
 
 ## One-off figures
 

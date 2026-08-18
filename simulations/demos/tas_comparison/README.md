@@ -92,6 +92,11 @@ receiver, what the curves are called -- is a table entry in
 `simulations/analysis/paoi/scenarios.py`. Pass `--all` to regenerate both
 figures at once.
 
+The figure can also be redrawn without running anything: the receptions
+behind it are committed as a ~120 KB dataset under
+`simulations/analysis/data/`, which the plotter falls back to when
+`results/` is absent. Re-export it with `--export` after a fresh run.
+
 Peak AoI for a periodic stream is the sampling period plus the delivery delay
 of the update that ends the gap, so a lost update widens the following peak
 instead of producing one of its own.

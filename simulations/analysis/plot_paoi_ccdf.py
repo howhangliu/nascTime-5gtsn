@@ -7,6 +7,11 @@ regenerating one takes only its name::
     plot_paoi_ccdf.py --scenario 5g-tsn
     plot_paoi_ccdf.py --all
 
+A registered scenario reads its raw ``.vec`` when one is present and falls back
+to the committed dataset otherwise, so a fresh clone can redraw every figure
+without the multi-megabyte result files. After re-running a simulation,
+``--export`` refreshes those datasets from the new results.
+
 For anything not registered, describe the curves directly. Each ``--run`` adds
 one, given as ``label=path/to/run.vec``; the receiving application module is
 shared by every run in a figure::
@@ -45,6 +50,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="regenerate every registered figure")
     source.add_argument("--run", action="append", metavar="LABEL=VEC",
                         help="one curve; repeat for each configuration to compare")
+    parser.add_argument("--export", action="store_true",
+                        help="extract each run's receptions from its .vec into "
+                             "the committed dataset, instead of plotting")
     parser.add_argument("--module",
                         help="full path of the receiving application module "
                              "(required with --run)")
@@ -69,10 +77,14 @@ def plot(scenario: Scenario, output: Path, args) -> int:
     """Render one figure; return a shell exit status."""
     missing = scenario.missing()
     if missing:
-        print(f"error: {scenario.name}: result file(s) not found:", file=sys.stderr)
-        for path in missing:
-            print(f"  {path}", file=sys.stderr)
-        print("Run the corresponding configuration first.", file=sys.stderr)
+        print(f"error: {scenario.name}: no data for "
+              f"{', '.join(run.label for run in missing)}.", file=sys.stderr)
+        print("Each run needs either raw results or a committed dataset:", file=sys.stderr)
+        for run in missing:
+            print(f"  {run.vec}", file=sys.stderr)
+            print(f"  {run.dataset}", file=sys.stderr)
+        print("Run the corresponding configuration, or check out the dataset.",
+              file=sys.stderr)
         return 1
 
     print(f"{scenario.title}")
@@ -102,11 +114,28 @@ def plot(scenario: Scenario, output: Path, args) -> int:
     return 0
 
 
+def export(scenario: Scenario) -> int:
+    """Refresh a scenario's committed datasets from its raw results."""
+    print(scenario.title)
+    status = 0
+    for run in scenario.runs:
+        try:
+            path = run.export()
+        except (FileNotFoundError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            status = 1
+            continue
+        print(f"  {run.label}: {path} ({path.stat().st_size / 1024:.0f} KiB)")
+    return status
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.run:
+        if args.export:
+            parser.error("--export works on registered scenarios, not --run")
         if not args.module or not args.output:
             parser.error("--run needs both --module and --output")
         scenario = Scenario(name="custom", title=args.title or "Peak age of information",
@@ -117,6 +146,9 @@ def main(argv: list[str] | None = None) -> int:
     status = 0
     for name in names:
         scenario = SCENARIOS[name]
+        if args.export:
+            status |= export(scenario)
+            continue
         output = args.output if args.output and not args.all else figure_path(scenario)
         status |= plot(scenario, output, args)
     return status

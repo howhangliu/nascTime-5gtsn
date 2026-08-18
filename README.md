@@ -570,6 +570,11 @@ figures this project publishes.
 simulations/analysis/plot_paoi_ccdf.py --all
 ```
 
+The raw `.vec` files are too large to track, so each run's receptions are
+committed as a ~30-80 KB dataset under `simulations/analysis/data/`; the
+plotter falls back to those when `results/` is absent, and every published
+figure redraws from a fresh clone with no simulation run.
+
 See `simulations/analysis/README.md` for the layout, how to register a new
 scenario, and where the figure styling lives.
 
