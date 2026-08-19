@@ -314,6 +314,24 @@ TSN Device A (PCP=6 in VLAN tag)
   → TSN Device B receives with original priority
 ```
 
+The reverse direction is demonstrated independently in `demos/uplink_qos`:
+
+```text
+TSN Device B (PCP=6 or PCP=0 in VLAN tag)
+  → DS-TT: strips 802.1Q VLAN tag, reads PCP, sets IPv4 DSCP
+  → UE Ip2Nic: preserves the IPv4 ToS byte in FlowControlInfo
+  → UE SDAP: derives QFI from DSCP and selects DRB per drbConfig
+  → UE MAC: prioritizes DRB 1 and reports residual backlog for both UL DRBs
+  → gNB: grants aggregate UE backlog and receives both DRBs
+  → GTP-U / UPF: forwards the original IPv4 packet toward the NW-TT
+  → NW-TT: maps IPv4 DSCP back to PCP on Ethernet egress
+  → TSN Device A receives with the original priority
+```
+
+See `simulations/demos/uplink_qos/README.md` and run the matched `Baseline`
+and `Qos` configurations from its `omnetpp.ini` to measure the end-to-end
+latency effect under contention.
+
 ### gPTP Transport
 
 Two modes via `*.nwTt.translator.gptpTransportMode`:
@@ -532,6 +550,13 @@ simulations/demos/tas_comparison/       FIFO baseline versus CNC-controlled TT T
 ├── cnc_baseline.xml / cnc_tas.xml
 ├── ip_config.xml
 └── README.md                            Run and result-comparison guide
+
+simulations/demos/uplink_qos/           Minimal single-path uplink QoS comparison
+├── UplinkQosNetwork.ned
+├── omnetpp.ini                          configs Baseline and Qos
+├── ip_config.xml
+├── analyze_qos.py                       DRB and end-to-end latency validation
+└── README.md                            QoS chain, run steps, and expected results
 
 simulations/demos/frer_test/            FRER validation (F1-F4)
 ├── frer_uplink.ini                      Bidirectional replication/recovery (FrerBidirectional_N1)

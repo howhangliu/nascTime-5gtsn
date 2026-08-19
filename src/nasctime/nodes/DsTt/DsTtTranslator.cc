@@ -17,6 +17,7 @@
 #include "inet/linklayer/ethernet/common/EthernetMacHeader_m.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
 #include "inet/linklayer/common/EtherType_m.h"
+#include "inet/linklayer/ieee8021q/Ieee8021qTagHeader_m.h"
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/transportlayer/udp/UdpHeader_m.h"
 #include "inet/linklayer/ieee8021as/GptpPacket_m.h"
@@ -32,6 +33,9 @@ Define_Module(DsTtTranslator);
 void DsTtTranslator::initialize()
 {
     gptpEncapUdpPort = par("gptpEncapUdpPort");
+    cStringTokenizer tokenizer(par("mappedPcpValues").stringValue(), ",");
+    while (tokenizer.hasMoreTokens())
+        mappedPcpSet.insert(atoi(tokenizer.nextToken()));
     tsnInGateId  = gate("tsnIn")->getId();
     tsnOutGateId = gate("tsnOut")->getId();
     ueInGateId   = gate("ueIn")->getId();
@@ -85,11 +89,9 @@ void DsTtTranslator::handleMessage(cMessage *msg)
 // ============================================================================
 // TSN Device → UE
 //
-// Frame arrives from TSN device via tsnEth. EthernetInterface has stripped
-// the MAC header and FCS. We need to:
-//   1. Strip the Ethernet framing (MAC header + FCS) that EthernetInterface leaves
-//   2. Set MAC address tags for the UE-facing EthernetInterface
-//   3. Forward the payload toward the UE
+// Frame arrives from TSN device via tsnEth. Translate a mapped 802.1Q PCP to
+// IPv4 DSCP before forwarding it to the UE. This is the uplink counterpart of
+// NwTtTranslator's downlink PCP->DSCP translation.
 // ============================================================================
 
 void DsTtTranslator::forwardToUe(Packet *pkt)
@@ -99,9 +101,31 @@ void DsTtTranslator::forwardToUe(Packet *pkt)
     EV_INFO << "DsTtTranslator TSN->UE: " << pkt->getName()
             << " (" << pkt->getTotalLength() << ")" << endl;
 
-    // Strip incoming Ethernet framing from tsnEth
+    // Strip incoming Ethernet framing from tsnEth.
     auto incomingMac = pkt->popAtFront<EthernetMacHeader>();
     pkt->popAtBack<EthernetFcs>(B(4));
+
+    uint16_t payloadType = incomingMac->getTypeOrLength();
+    auto firstChunk = pkt->peekAtFront<Chunk>();
+    if (auto vlanTag = dynamicPtrCast<const Ieee8021qTagEpdHeader>(firstChunk)) {
+        int pcp = vlanTag->getPcp();
+        if (mappedPcpSet.count(pcp) > 0) {
+            auto removedVlanTag = pkt->popAtFront<Ieee8021qTagEpdHeader>();
+            payloadType = removedVlanTag->getTypeOrLength();
+            if (payloadType != ETHERTYPE_IPv4)
+                throw cRuntimeError("DsTtTranslator: PCP mapping currently requires IPv4 payload (EtherType 0x%04x)", payloadType);
+
+            auto ipHeader = pkt->removeAtFront<Ipv4Header>();
+            ipHeader->setDscp(pcp);
+            pkt->insertAtFront(ipHeader);
+            EV_INFO << "DsTtTranslator: stripped VLAN tag, PCP=" << pcp
+                    << " -> DSCP=" << pcp << endl;
+        }
+        else {
+            EV_INFO << "DsTtTranslator: preserving VLAN tag, PCP=" << pcp
+                    << " (not mapped)" << endl;
+        }
+    }
 
     // Clear stale tags from incoming interface
     pkt->removeTagIfPresent<MacAddressInd>();
@@ -113,7 +137,7 @@ void DsTtTranslator::forwardToUe(Packet *pkt)
     auto macHeader = makeShared<EthernetMacHeader>();
     macHeader->setSrc(MacAddress::UNSPECIFIED_ADDRESS);  // ueEth fills in
     macHeader->setDest(incomingMac->getDest());          // preserve original dest
-    macHeader->setTypeOrLength(incomingMac->getTypeOrLength());
+    macHeader->setTypeOrLength(payloadType);
     pkt->insertAtFront(macHeader);
 
     auto fcs = makeShared<EthernetFcs>();

@@ -17,6 +17,8 @@
 #include "inet/common/packet/Packet.h"
 #include "inet/linklayer/common/MacAddress.h"
 
+#include <set>
+
 using namespace omnetpp;
 using namespace inet;
 
@@ -24,6 +26,7 @@ class DsTtTranslator : public cSimpleModule
 {
   protected:
     int gptpEncapUdpPort;
+    std::set<int> mappedPcpSet;
     // Gate IDs
     int tsnInGateId;
     int tsnOutGateId;
