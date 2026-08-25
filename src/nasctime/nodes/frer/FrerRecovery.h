@@ -32,14 +32,12 @@ class FrerRecovery : public cSimpleModule
     };
 
   protected:
-    /** Per-stream state for the Vector Recovery Algorithm.
-     *  Tracks which DSCP "copy" was accepted at each window position,
-     *  so that multiple IP fragments of the same accepted datagram all
-     *  pass through, while fragments of the duplicate copy are dropped.
-     */
+    /** Per-stream state for the Vector Recovery Algorithm. */
     struct StreamState {
         uint16_t highestSeqSeen = 0;
-        // Per-position: -1 = not yet seen, >=0 = accepted from this DSCP
+        // Per-position: -1 = not yet seen, >=0 = sequence position accepted.
+        // The stored DSCP is diagnostic only; any subsequent complete frame
+        // at the same sequence position is a duplicate, even on the same leg.
         std::vector<int16_t> accepted;
         bool active = false;
         cMessage *timeoutMsg = nullptr;

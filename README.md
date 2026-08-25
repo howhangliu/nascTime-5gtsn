@@ -560,6 +560,8 @@ simulations/demos/uplink_qos/           Minimal single-path uplink QoS compariso
 
 simulations/demos/frer_test/            FRER validation (F1-F4)
 ├── frer_uplink.ini                      Bidirectional replication/recovery (FrerBidirectional_N1)
+├── frer_uplink_dualconn.ini             Uplink DS-TT replication over gNB + gNB2 (FrerUplinkDualConn_N1)
+├── analyze_uplink_dualconn.py           Checks both radio legs and NW-TT elimination
 ├── frer_intersession.ini                Inter-PDU-session transport diversity (FrerInterSession_N15)
 ├── frer_dualconn.ini                    NR dual-connectivity transport diversity (FrerDualConn_N15)
 ├── frer_sweep.ini                       Scheduler × N × FRER-mode evaluation sweep
@@ -806,8 +808,8 @@ re-record them and for the known debug-library limitation.
    has not yet completed full end-to-end integration testing across all
    scenario configurations.
 
-5. **FRER NR dual-connectivity transport diversity (F4)** is under active
-   development and not yet available for use.
+5. **FRER NR dual-connectivity transport diversity (F4)** is implemented for
+   the validated two-gNB uplink scenario.
 
 6. **Vanilla Simu5G v1.5.0 is sufficient only for non-FRER features.**
    Earlier versions of this README incorrectly stated no Simu5G source

@@ -55,6 +55,7 @@ module NrNicUeDC extends NrNicUe
             @display("p=439,230");
         }
         sdap2: <default("NrSdap")> like INrSdap if dualConnEnabled {
+            pdcpMuxModule = "^.pdcpMux2";
             @display("p=440,155");
         }
         pdcpMux2: UpperMux if dualConnEnabled {
