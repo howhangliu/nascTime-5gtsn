@@ -250,12 +250,9 @@ FrerRecovery::recoverSequence(uint16_t streamId, uint16_t seqNum, int dscp)
     }
 
     if (diff == 0) {
-        // Same as highest — check who was accepted here
-        int idx = seqNum % windowSize;
-        if (s.accepted[idx] == dscp) {
-            // Same copy (e.g. another fragment of the accepted datagram)
-            return ACCEPT;
-        }
+        // The sequence position was already accepted.  A repeated frame is a
+        // duplicate regardless of whether it came from the other FRER member
+        // stream or was retransmitted on the same member stream.
         return DUPLICATE;
     }
 
@@ -273,11 +270,8 @@ FrerRecovery::recoverSequence(uint16_t streamId, uint16_t seqNum, int dscp)
         s.accepted[idx] = dscp;
         return ACCEPT;
     }
-    if (s.accepted[idx] == dscp) {
-        // Same copy (another fragment)
-        return ACCEPT;
-    }
-    // Different copy — duplicate
+    // This sequence position has already been delivered.  Member identity
+    // (represented by DSCP) does not make a second complete frame unique.
     return DUPLICATE;
 }
 

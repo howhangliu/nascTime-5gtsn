@@ -15,6 +15,9 @@ simple NrDcMux
 {
     parameters:
         @display("i=block/dispatch");
+        // Uplink IP DSCP values whose packets use the secondary NR stack.
+        string secondaryDscps = default("8");
+        string binderModule = default("binder");
     gates:
         inout upper;       // to ip2nic.stackNic
         inout primary;     // to sdap  (NR stack 1 / primary cell group)

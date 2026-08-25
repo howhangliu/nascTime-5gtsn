@@ -121,6 +121,7 @@ void FrerReplicator::initializeTransportBinding()
         throw cRuntimeError("FrerReplicator: unknown transportBinding '%s'",
                             transportBindingType.c_str());
     }
+
 }
 
 
@@ -206,6 +207,14 @@ void FrerReplicator::replicateAndSend(Packet *pkt, int dscp)
                 << pkt->getName() << endl;
         numPassedThrough++;
         emit(passedThroughSignal, numPassedThrough);
+        // The uplink replicator receives complete Ethernet frames.  Restore
+        // the framing removed above before taking the non-FRER pass-through
+        // path; otherwise a bare IPv4 packet is sent to the Ethernet
+        // dispatcher.
+        if (ethernetFramed) {
+            pkt->insertAtFront(ethHdr);
+            pkt->insertAtBack(fcs);
+        }
         send(pkt, outGateId);
         return;
     }

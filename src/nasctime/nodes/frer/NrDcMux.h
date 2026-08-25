@@ -13,6 +13,9 @@
 #define __SIMU5G_1_5_0_NRDCMUX_H_
 
 #include <omnetpp.h>
+#include <set>
+
+namespace simu5g { class Binder; }
 
 using namespace omnetpp;
 
@@ -25,9 +28,14 @@ class NrDcMux : public cSimpleModule
       int upperInId, upperOutId;
       int primaryInId, primaryOutId;
       int secondaryInId, secondaryOutId;
+      std::set<int> secondaryDscps_;
+      std::set<int> primedSecondaryUes_;
+      simu5g::Binder *binder_ = nullptr;
 
       virtual void initialize() override;
       virtual void handleMessage(cMessage *msg) override;
+      bool useSecondaryLeg(cMessage *msg) const;
+      void selectSecondaryDestination(cMessage *msg);
 };
 
 
