@@ -314,6 +314,24 @@ TSN Device A (PCP=6 in VLAN tag)
   → TSN Device B receives with original priority
 ```
 
+The reverse direction is demonstrated independently in `demos/uplink_qos`:
+
+```text
+TSN Device B (PCP=6 or PCP=0 in VLAN tag)
+  → DS-TT: strips 802.1Q VLAN tag, reads PCP, sets IPv4 DSCP
+  → UE Ip2Nic: preserves the IPv4 ToS byte in FlowControlInfo
+  → UE SDAP: derives QFI from DSCP and selects DRB per drbConfig
+  → UE MAC: prioritizes DRB 1 and reports residual backlog for both UL DRBs
+  → gNB: grants aggregate UE backlog and receives both DRBs
+  → GTP-U / UPF: forwards the original IPv4 packet toward the NW-TT
+  → NW-TT: maps IPv4 DSCP back to PCP on Ethernet egress
+  → TSN Device A receives with the original priority
+```
+
+See `simulations/demos/uplink_qos/README.md` and run the matched `Baseline`
+and `Qos` configurations from its `omnetpp.ini` to measure the end-to-end
+latency effect under contention.
+
 ### gPTP Transport
 
 Two modes via `*.nwTt.translator.gptpTransportMode`:
@@ -526,8 +544,24 @@ simulations/demos/ext_multiendpoint_test/  Scalability sweep, heterogeneous traf
 ├── fading.csv                           Fading trace input
 └── analyze_primary.py, parse_results.py, vec_parse.py   Result post-processing
 
+simulations/demos/tas_comparison/       FIFO baseline versus CNC-controlled TT TAS
+├── TasComparisonNetwork.ned
+├── omnetpp.ini                          configs Baseline and Tas
+├── cnc_baseline.xml / cnc_tas.xml
+├── ip_config.xml
+└── README.md                            Run and result-comparison guide
+
+simulations/demos/uplink_qos/           Minimal single-path uplink QoS comparison
+├── UplinkQosNetwork.ned
+├── omnetpp.ini                          configs Baseline and Qos
+├── ip_config.xml
+├── analyze_qos.py                       DRB and end-to-end latency validation
+└── README.md                            QoS chain, run steps, and expected results
+
 simulations/demos/frer_test/            FRER validation (F1-F4)
 ├── frer_uplink.ini                      Bidirectional replication/recovery (FrerBidirectional_N1)
+├── frer_uplink_dualconn.ini             Uplink DS-TT replication over gNB + gNB2 (FrerUplinkDualConn_N1)
+├── analyze_uplink_dualconn.py           Checks both radio legs and NW-TT elimination
 ├── frer_intersession.ini                Inter-PDU-session transport diversity (FrerInterSession_N15)
 ├── frer_dualconn.ini                    NR dual-connectivity transport diversity (FrerDualConn_N15)
 ├── frer_sweep.ini                       Scheduler × N × FRER-mode evaluation sweep
@@ -552,6 +586,24 @@ bin/smoke_test.sh            End-to-end check of the heterogeneous traffic gener
 `bin/` is added to `PATH` by sourcing `setenv` from the nascTime root; the
 launchers resolve NED and library paths from `NASCTIME_ROOT`, `INET_ROOT`
 and `SIMU5G_ROOT`.
+
+### Result analysis (`simulations/analysis/`)
+
+Post-processing shared by every scenario: a `paoi` package that reconstructs
+age of information from `.vec` files, and one CLI over a registry of the
+figures this project publishes.
+
+```bash
+simulations/analysis/plot_aoi.py --all
+```
+
+The raw `.vec` files are too large to track, so each run's receptions are
+committed as a ~30-80 KB dataset under `simulations/analysis/data/`; the
+plotter falls back to those when `results/` is absent, and every published
+figure redraws from a fresh clone with no simulation run.
+
+See `simulations/analysis/README.md` for the layout, how to register a new
+scenario, and where the figure styling lives.
 
 ---
 
@@ -745,13 +797,10 @@ re-record them and for the known debug-library limitation.
 
 ## Known Limitations
 
-1. **TSN AF TAS gate control** parsed and logged but not programmatically
-   applied to TSN Device A's `Ieee8021qTimeAwareShaper`.
-
-2. **Static BMCA** validates topology but does not dynamically reconfigure
+1. **Static BMCA** validates topology but does not dynamically reconfigure
    gPTP port roles. INET's `Gptp` module does not support dynamic BMCA.
 
-3. **No dedicated DRB-enabled UE variant.** Multi-DRB QoS is configured on the
+2. **No dedicated DRB-enabled UE variant.** Multi-DRB QoS is configured on the
    stock `NRUeDsTt` via `cellularNic.hasSdap = true` plus a `drbConfig` list;
    there is no separate `NRUeDsTtDrb` module.
 
@@ -759,8 +808,8 @@ re-record them and for the known debug-library limitation.
    has not yet completed full end-to-end integration testing across all
    scenario configurations.
 
-5. **FRER NR dual-connectivity transport diversity (F4)** is under active
-   development and not yet available for use.
+5. **FRER NR dual-connectivity transport diversity (F4)** is implemented for
+   the validated two-gNB uplink scenario.
 
 6. **Vanilla Simu5G v1.5.0 is sufficient only for non-FRER features.**
    Earlier versions of this README incorrectly stated no Simu5G source

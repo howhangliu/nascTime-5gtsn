@@ -32,20 +32,32 @@ void TunableNrChannelModel::initialize(int stage)
     }
 }
 
-bool TunableNrChannelModel::impairs(simu5g::Direction dir) const
+bool TunableNrChannelModel::impairs(const simu5g::UserControlInfo *lteInfo) const
 {
+    simu5g::Direction dir = lteInfo->getDirection();
     switch (impairedDirection_) {
-        case IMPAIR_UL: return dir == simu5g::UL;
-        case IMPAIR_DL: return dir == simu5g::DL;
-        default: return true;
+        case IMPAIR_UL: if (dir != simu5g::UL) return false; break;
+        case IMPAIR_DL: if (dir != simu5g::DL) return false; break;
+        default: break;
     }
+
+    int impairedNodeId = par("impairedNodeId").intValue();
+    if (impairedNodeId < 0)
+        return true;
+
+    // In Simu5G's feedback and uplink-reception paths, sourceId is the UE.
+    // For an ordinary downlink data frame, the UE is the destination instead.
+    simu5g::MacNodeId ueId =
+            (dir == simu5g::DL && lteInfo->getFrameType() != simu5g::FEEDBACKPKT)
+            ? lteInfo->getDestId() : lteInfo->getSourceId();
+    return ueId == static_cast<simu5g::MacNodeId>(impairedNodeId);
 }
 
 std::vector<double> TunableNrChannelModel::getSINR(simu5g::LteAirFrame *frame, simu5g::UserControlInfo *lteInfo)
 {
     std::vector<double> snrV = simu5g::NrChannelModel::getSINR(frame, lteInfo);
 
-    if (!impairs(lteInfo->getDirection()))
+    if (!impairs(lteInfo))
         return snrV;
 
     double offset = par("sinrOffset").doubleValue();
@@ -65,7 +77,7 @@ bool TunableNrChannelModel::isReceptionSuccessful(simu5g::LteAirFrame *frame, si
     if (!simu5g::NrChannelModel::isReceptionSuccessful(frame, lteInfo))
         return false;
 
-    if (!impairs(lteInfo->getDirection()))
+    if (!impairs(lteInfo))
         return true;
 
     double per = par("extraPer").doubleValue();

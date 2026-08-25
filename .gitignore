@@ -1,5 +1,10 @@
+# Python analysis tooling
+__pycache__/
+*.pyc
+
 # OS / editor
 .DS_Store
+._*
 Thumbs.db
 *.swp
 *.swo
@@ -21,6 +26,7 @@ results/
 *.log
 
 .qtenvrc
+.qtenvrc.lock
 .cmdenv-log
 
 # Generated files
