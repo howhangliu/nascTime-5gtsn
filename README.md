@@ -562,6 +562,8 @@ simulations/demos/frer_test/            FRER validation (F1-F4)
 ├── frer_uplink.ini                      Bidirectional replication/recovery (FrerBidirectional_N1)
 ├── frer_uplink_dualconn.ini             Uplink DS-TT replication over gNB + gNB2 (FrerUplinkDualConn_N1)
 ├── analyze_uplink_dualconn.py           Checks both radio legs and NW-TT elimination
+├── frer_uplink_dualconn_scalability.ini  2/10-UE uplink FRER load tests
+├── analyze_uplink_dualconn_scalability.py Aggregate and per-UE scalability checks
 ├── frer_intersession.ini                Inter-PDU-session transport diversity (FrerInterSession_N15)
 ├── frer_dualconn.ini                    NR dual-connectivity transport diversity (FrerDualConn_N15)
 ├── frer_sweep.ini                       Scheduler × N × FRER-mode evaluation sweep

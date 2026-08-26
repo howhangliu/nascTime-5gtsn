@@ -70,10 +70,13 @@ void FrerRecovery::handleMessage(cMessage *msg)
 {
     // --- Self-message: stream idle timeout ---
     if (msg->isSelfMessage()) {
-        uint16_t streamId = static_cast<uint16_t>(msg->getKind());
-        EV_INFO << "FrerRecovery: timeout for stream " << streamId
+        auto keyIt = timeoutKeys.find(msg);
+        if (keyIt == timeoutKeys.end())
+            throw cRuntimeError("FrerRecovery: timeout without recovery key");
+        uint64_t recoveryKey = keyIt->second;
+        EV_INFO << "FrerRecovery: timeout for recovery key " << recoveryKey
                 << ", resetting window" << endl;
-        resetStream(streamId);
+        resetStream(recoveryKey);
         return;
     }
 
@@ -154,7 +157,9 @@ void FrerRecovery::handleMessage(cMessage *msg)
     }
 
     // --- Step 4: Vector Recovery Algorithm ---
-    RecoveryResult result = recoverSequence(streamId, seqNum, dscp);
+    uint64_t recoveryKey = (static_cast<uint64_t>(ipHdr->getSrcAddress().getInt()) << 16)
+                         | streamId;
+    RecoveryResult result = recoverSequence(recoveryKey, seqNum, dscp);
 
     switch (result) {
 
@@ -187,7 +192,7 @@ void FrerRecovery::handleMessage(cMessage *msg)
             pkt->insertAtFront(ethHdr);
             pkt->insertAtBack(fcs);
         }
-        rescheduleTimeout(streamId);
+        rescheduleTimeout(recoveryKey);
         send(pkt, outGateId);
         break;
     }
@@ -216,12 +221,12 @@ void FrerRecovery::handleMessage(cMessage *msg)
 // ============================================================================
 
 FrerRecovery::RecoveryResult
-FrerRecovery::recoverSequence(uint16_t streamId, uint16_t seqNum, int dscp)
+FrerRecovery::recoverSequence(uint64_t recoveryKey, uint16_t seqNum, int dscp)
 {
-    if (streams.find(streamId) == streams.end()) {
-        streams.emplace(streamId, StreamState(windowSize));
+    if (streams.find(recoveryKey) == streams.end()) {
+        streams.emplace(recoveryKey, StreamState(windowSize));
     }
-    StreamState &s = streams[streamId];
+    StreamState &s = streams[recoveryKey];
 
     // --- First packet for this stream ---
     if (!s.active) {
@@ -279,22 +284,22 @@ FrerRecovery::recoverSequence(uint16_t streamId, uint16_t seqNum, int dscp)
 // Stream timeout management
 // ============================================================================
 
-void FrerRecovery::resetStream(uint16_t streamId)
+void FrerRecovery::resetStream(uint64_t recoveryKey)
 {
-    auto it = streams.find(streamId);
+    auto it = streams.find(recoveryKey);
     if (it != streams.end()) {
         it->second.active = false;
         it->second.accepted.assign(windowSize, -1);
     }
 }
 
-void FrerRecovery::rescheduleTimeout(uint16_t streamId)
+void FrerRecovery::rescheduleTimeout(uint64_t recoveryKey)
 {
-    StreamState &s = streams[streamId];
+    StreamState &s = streams[recoveryKey];
 
     if (!s.timeoutMsg) {
         s.timeoutMsg = new cMessage("frer-stream-timeout");
-        s.timeoutMsg->setKind(static_cast<int>(streamId));
+        timeoutKeys[s.timeoutMsg] = recoveryKey;
     }
 
     if (s.timeoutMsg->isScheduled())
@@ -318,6 +323,7 @@ void FrerRecovery::finish()
 
     for (auto &pair : streams) {
         if (pair.second.timeoutMsg) {
+            timeoutKeys.erase(pair.second.timeoutMsg);
             cancelAndDelete(pair.second.timeoutMsg);
             pair.second.timeoutMsg = nullptr;
         }
