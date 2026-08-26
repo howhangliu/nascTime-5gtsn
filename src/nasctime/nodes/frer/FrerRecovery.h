@@ -55,7 +55,12 @@ class FrerRecovery : public cSimpleModule
     bool ethernetFramed = true;
 
     // --- Per-stream recovery state ---
-    std::map<uint16_t, StreamState> streams;
+    // Recovery state is scoped by source IPv4 address and FRER stream ID.
+    // Separate DS-TTs start their sequence generators independently, so a
+    // stream-ID-only key would cause equal sequence numbers from different
+    // UEs to be eliminated as duplicates.
+    std::map<uint64_t, StreamState> streams;
+    std::map<cMessage *, uint64_t> timeoutKeys;
 
     // --- Gate IDs ---
     int inGateId;
@@ -89,12 +94,12 @@ class FrerRecovery : public cSimpleModule
      * @param seqNum    IPv4 Identification value
      * @param dscp      actual DSCP of this packet (primary or replica)
      */
-    virtual RecoveryResult recoverSequence(uint16_t streamId,
+    virtual RecoveryResult recoverSequence(uint64_t recoveryKey,
                                            uint16_t seqNum,
                                            int dscp);
 
-    virtual void resetStream(uint16_t streamId);
-    virtual void rescheduleTimeout(uint16_t streamId);
+    virtual void resetStream(uint64_t recoveryKey);
+    virtual void rescheduleTimeout(uint64_t recoveryKey);
 };
 
 #endif
