@@ -1,0 +1,29 @@
+<config>
+    <interface hosts="tsnServer" address="10.0.0.1" netmask="255.255.255.0"/>
+    <interface hosts="nwTt" names="ethIf" address="10.0.0.2" netmask="255.255.255.0"/>
+
+    <interface hosts="nwTt" names="pppIf" address="10.0.1.1" netmask="255.255.255.0"/>
+    <interface hosts="upf" names="pppIf" address="10.0.1.2" netmask="255.255.255.0"/>
+    <interface hosts="upf" names="ppp0" address="10.0.2.1" netmask="255.255.255.0"/>
+    <interface hosts="gnb" names="pppIf" address="10.0.2.2" netmask="255.255.255.0"/>
+
+    <interface hosts="nwTt" names="pppIf2" address="10.0.4.1" netmask="255.255.255.0"/>
+    <interface hosts="upf2" names="pppIf" address="10.0.4.2" netmask="255.255.255.0"/>
+    <interface hosts="upf2" names="ppp0" address="10.0.5.1" netmask="255.255.255.0"/>
+    <interface hosts="gnb2" names="pppIf" address="10.0.5.2" netmask="255.255.255.0"/>
+
+    <interface hosts="gnb gnb2 car[*]" names="cellular" address="10.0.3.x" netmask="255.255.255.0"/>
+    <interface hosts="car[*]" names="eth0" address="192.168.x.1" netmask="255.255.255.0"/>
+    <interface hosts="car[*].positionSource" address="192.168.x.2" netmask="255.255.255.0"/>
+
+    <!--
+      A positionSource is created dynamically behind a DS-TT. The IPv4
+      configurator cannot model the DS-TT translator as an IP router, so it
+      cannot infer a path from this host to tsnServer. Send all non-local
+      traffic directly through eth0. GlobalArp resolves the destination MAC;
+      the DS-TT then converts the Ethernet frame to the UE uplink packet.
+    -->
+    <route hosts="car[*].positionSource" destination="*" netmask="*" gateway="*" interface="eth0" metric="0"/>
+
+    <interface hosts="**" address="10.10.x.x" netmask="255.255.255.0"/>
+</config>

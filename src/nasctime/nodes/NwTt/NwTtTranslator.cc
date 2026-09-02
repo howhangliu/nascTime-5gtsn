@@ -127,7 +127,25 @@ void NwTtTranslator::initialize(int stage)
                 std::string tsnAddr = entry->get("address").stdstringValue();
                 std::string ueModPath = entry->get("ue").stdstringValue();
 
-                auto tsnIp = L3AddressResolver().resolve(tsnAddr.c_str());
+                // Some derived scenarios (notably SUMO/Veins) inherit a
+                // static endpoint profile but create their endpoints later at
+                // runtime. Do not abort initialization for those stale paths;
+                // their dynamic configurator registers them with the binder
+                // after TraCI creates the vehicle.
+                // L3AddressResolver::tryResolve() still throws when the
+                // module path itself is absent, so check the model first.
+                auto *tsnModule = getSimulation()->findModuleByPath(tsnAddr.c_str());
+                if (tsnModule == nullptr) {
+                    EV_WARN << "NwTtTranslator: skipping unavailable TSN endpoint "
+                            << tsnAddr << " (ue=" << ueModPath << ")" << endl;
+                    continue;
+                }
+                L3Address tsnIp = L3AddressResolver().addressOf(tsnModule);
+                if (tsnIp.isUnspecified()) {
+                    EV_WARN << "NwTtTranslator: skipping TSN endpoint without an address "
+                            << tsnAddr << " (ue=" << ueModPath << ")" << endl;
+                    continue;
+                }
                 auto *ueModule = getModuleByPath(ueModPath.c_str());
 
                 if (ueModule) {

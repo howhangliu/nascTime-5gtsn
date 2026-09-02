@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <input>
+        <net-file value="square.net.xml"/>
+        <route-files value="square.rou.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+        <end value="35"/>
+        <step-length value="0.01"/>
+    </time>
+    <processing>
+        <time-to-teleport value="-1"/>
+    </processing>
+    <report>
+        <no-step-log value="true"/>
+        <verbose value="false"/>
+    </report>
+</configuration>

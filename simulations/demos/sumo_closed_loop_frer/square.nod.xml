@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nodes>
+    <node id="n00" x="0" y="0" type="priority"/>
+    <node id="n10" x="50" y="0" type="priority"/>
+    <node id="n20" x="100" y="0" type="priority"/>
+    <node id="n01" x="0" y="50" type="priority"/>
+    <node id="n11" x="50" y="50" type="priority"/>
+    <node id="n21" x="100" y="50" type="priority"/>
+    <node id="n02" x="0" y="100" type="priority"/>
+    <node id="n12" x="50" y="100" type="priority"/>
+    <node id="n22" x="100" y="100" type="priority"/>
+</nodes>

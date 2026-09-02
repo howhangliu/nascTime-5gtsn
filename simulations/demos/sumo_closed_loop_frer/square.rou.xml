@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <vType id="industrialVehicle" vClass="passenger" length="2.5" accel="1.2" decel="2.5"
+           maxSpeed="2.78" speedFactor="normc(0.85,0.12,0.55,1.0)"/>
+
+    <!-- SUMO randomly chooses one long cyclic route for each UE. -->
+    <routeDistribution id="randomRoutes">
+        <route probability="1" edges="h00 h01 v20 v21 h21r h20r v01r v00r h00 h01 v20 v21 h21r h20r v01r v00r"/>
+        <route probability="1" edges="h20 h21 v21r v20r h01r h00r v00 v01 h20 h21 v21r v20r h01r h00r v00 v01"/>
+        <route probability="1" edges="v00 v01 h20 h21 v21r v20r h01r h00r v00 v01 h20 h21 v21r v20r h01r h00r"/>
+        <route probability="1" edges="v20 v21 h21r h20r v01r v00r h00 h01 v20 v21 h21r h20r v01r v00r h00 h01"/>
+        <route probability="1" edges="h00 v10 h11 v20r h01r v10 h10r v00r h00 v10 h11 v20r h01r v10 h10r v00r"/>
+        <route probability="1" edges="v01 h20 v11r h10r v01 h20 v11r h10r v01 h20 v11r h10r v01 h20 v11r h10r"/>
+    </routeDistribution>
+
+    <vehicle id="ue0" type="industrialVehicle" route="randomRoutes" depart="0.00" departPos="random_free"/>
+    <vehicle id="ue1" type="industrialVehicle" route="randomRoutes" depart="0.05" departPos="random_free"/>
+    <vehicle id="ue2" type="industrialVehicle" route="randomRoutes" depart="0.10" departPos="random_free"/>
+    <vehicle id="ue3" type="industrialVehicle" route="randomRoutes" depart="0.15" departPos="random_free"/>
+    <vehicle id="ue4" type="industrialVehicle" route="randomRoutes" depart="0.20" departPos="random_free"/>
+    <vehicle id="ue5" type="industrialVehicle" route="randomRoutes" depart="0.25" departPos="random_free"/>
+    <vehicle id="ue6" type="industrialVehicle" route="randomRoutes" depart="0.30" departPos="random_free"/>
+    <vehicle id="ue7" type="industrialVehicle" route="randomRoutes" depart="0.35" departPos="random_free"/>
+    <vehicle id="ue8" type="industrialVehicle" route="randomRoutes" depart="0.40" departPos="random_free"/>
+    <vehicle id="ue9" type="industrialVehicle" route="randomRoutes" depart="0.45" departPos="random_free"/>
+</routes>

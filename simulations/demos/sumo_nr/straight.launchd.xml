@@ -1,0 +1,5 @@
+<launch>
+    <copy file="straight.net.xml"/>
+    <copy file="straight.rou.xml"/>
+    <copy file="straight.sumocfg" type="config"/>
+</launch>
