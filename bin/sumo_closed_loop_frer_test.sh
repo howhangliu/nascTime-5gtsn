@@ -5,6 +5,20 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 nasctime_root="$(cd "$script_dir/.." && pwd)"
 workspace_root="$(cd "$nasctime_root/.." && pwd)"
 scenario_dir="$nasctime_root/simulations/demos/sumo_closed_loop_frer"
+config_name="${1:-SumoClosedLoopUplinkFrer}"
+
+case "$config_name" in
+    SumoClosedLoopUplinkFrer)
+        result_subdir="results"
+        ;;
+    SumoClosedLoopUplinkFrerPartialOverlap)
+        result_subdir="results/partial_overlap"
+        ;;
+    *)
+        echo "Unsupported configuration: $config_name" >&2
+        exit 2
+        ;;
+esac
 
 omnetpp_root="${OMNETPP_ROOT:-$workspace_root/omnetpp-6.4.0}"
 inet_root="${INET_ROOT:-$workspace_root/inet}"
@@ -37,6 +51,7 @@ export PATH="$(dirname "$sumo_bin"):$veins_root/bin:$PATH"
 
 "$scenario_dir/generate_sumo_network.sh"
 mkdir -p "$scenario_dir/results"
+mkdir -p "$scenario_dir/$result_subdir"
 
 launchd_log="$scenario_dir/results/veins_launchd.log"
 veins_launchd -vv --port 9999 --command "$sumo_bin" >"$launchd_log" 2>&1 &
@@ -67,13 +82,13 @@ fi
 
 make -C "$nasctime_root" INET_ROOT="$inet_root" SIMU5G_ROOT="$simu5g_root"
 
-rm -f "$scenario_dir/results/SumoClosedLoopUplinkFrer_run0.sca" \
-      "$scenario_dir/results/SumoClosedLoopUplinkFrer_run0.vec"
+rm -f "$scenario_dir/$result_subdir/${config_name}_run0.sca" \
+      "$scenario_dir/$result_subdir/${config_name}_run0.vec"
 
 ned_path="$nasctime_root/src:$nasctime_root/simulations:$simu5g_root/src:$inet_root/src:$veins_root/src/veins:$veins_inet_root/src/veins_inet"
 (
     cd "$scenario_dir"
-    opp_run -u Cmdenv -c SumoClosedLoopUplinkFrer \
+    opp_run -u Cmdenv -c "$config_name" \
         -n "$ned_path" \
         -l "$nasctime_root/src/nasctime" \
         -l "$veins_root/src/veins" \
@@ -81,7 +96,7 @@ ned_path="$nasctime_root/src:$nasctime_root/simulations:$simu5g_root/src:$inet_r
         -f omnetpp.ini
 )
 
-sca="$scenario_dir/results/SumoClosedLoopUplinkFrer_run0.sca"
+sca="$scenario_dir/$result_subdir/${config_name}_run0.sca"
 test -s "$sca"
 reporter_count="$(grep -Ec '^scalar .*car\[[0-9]+\]\.positionSource\.app\[0\] "packets sent" [1-9]' "$sca" || true)"
 test "$reporter_count" -eq 10
@@ -98,6 +113,18 @@ grep -Eq '^scalar .*frerReplicatorUl replicaSent:count [1-9]' "$sca"
 grep -Eq '^scalar .*nwTt\.frerRecoveryUl duplicatesDropped:count [1-9]' "$sca"
 grep -Eq '^scalar .*tsnServer\.app\[0\] packetReceived:count [1-9]' "$sca"
 
-echo "SUMO closed-loop uplink FRER test passed ($reporter_count vehicle reporters)."
-echo "Results: $scenario_dir/results"
+if [ "$config_name" = "SumoClosedLoopUplinkFrerPartialOverlap" ]; then
+    grep -Eq '^scalar .*frerReplicatorUl primaryUnavailable:count [1-9]' "$sca"
+    grep -Eq '^scalar .*frerReplicatorUl replicaUnavailable:count [1-9]' "$sca"
+    grep -Eq '^scalar .*frerReplicatorUl primaryOnly:count [1-9]' "$sca"
+    grep -Eq '^scalar .*frerReplicatorUl bothAvailable:count [1-9]' "$sca"
+    grep -Eq '^scalar .*frerReplicatorUl replicaOnly:count [1-9]' "$sca"
+    if grep -Eq '^scalar .*frerReplicatorUl noMemberAvailable:count [1-9]' "$sca"; then
+        echo "A position report was generated outside both gNB regions." >&2
+        exit 1
+    fi
+fi
+
+echo "$config_name passed ($reporter_count vehicle reporters)."
+echo "Results: $scenario_dir/$result_subdir"
 "$scenario_dir/analyze_results.py" "$sca"

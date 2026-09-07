@@ -49,6 +49,10 @@ def get_scalar(values: dict[tuple[str, str], float], module: str, name: str) -> 
     return values[key]
 
 
+def optional_scalar(values: dict[tuple[str, str], float], module: str, name: str) -> float:
+    return values.get((module, name), 0.0)
+
+
 def count_below(histogram: Histogram, threshold: float) -> int:
     """Count samples below a threshold aligned with a histogram boundary."""
     return sum(count for lower, count in histogram.bins if lower < threshold)
@@ -87,8 +91,12 @@ def main() -> int:
     args = parser.parse_args()
 
     scalars, histograms = read_sca(args.scalar_file)
-    network = "SumoClosedLoopFrerNetwork"
-    rows: list[tuple[int, int, int, int, int, int]] = []
+    server_modules = [module for module, name in scalars
+                      if module.endswith(".tsnServer.app[0]") and name == "packetReceived:count"]
+    if len(server_modules) != 1:
+        raise RuntimeError(f"expected one TSN server in results, found {len(server_modules)}")
+    network = server_modules[0].removesuffix(".tsnServer.app[0]")
+    rows: list[tuple[int, int, int, int, int, int, int, int]] = []
 
     for vehicle in range(args.vehicles):
         prefix = f"{network}.car[{vehicle}]"
@@ -97,13 +105,21 @@ def main() -> int:
         replica = get_scalar(scalars, f"{prefix}.dsTt.frerReplicatorUl", "replicaSent:count")
         no_route = get_scalar(scalars, f"{prefix}.positionSource.ipv4.ip", "packetDropNoRouteFound:count")
         wrong_mac = get_scalar(scalars, f"{prefix}.eth[0].mac", "packetDropNotAddressedToUs:count")
-        rows.append((vehicle, int(generated), int(primary), int(replica), int(no_route), int(wrong_mac)))
+        primary_unavailable = optional_scalar(
+            scalars, f"{prefix}.dsTt.frerReplicatorUl", "primaryUnavailable:count")
+        replica_unavailable = optional_scalar(
+            scalars, f"{prefix}.dsTt.frerReplicatorUl", "replicaUnavailable:count")
+        rows.append((vehicle, int(generated), int(primary), int(replica),
+                     int(primary_unavailable), int(replica_unavailable),
+                     int(no_route), int(wrong_mac)))
 
     generated = sum(row[1] for row in rows)
     primary = sum(row[2] for row in rows)
     replica = sum(row[3] for row in rows)
-    no_route = sum(row[4] for row in rows)
-    wrong_mac = sum(row[5] for row in rows)
+    primary_unavailable = sum(row[4] for row in rows)
+    replica_unavailable = sum(row[5] for row in rows)
+    no_route = sum(row[6] for row in rows)
+    wrong_mac = sum(row[7] for row in rows)
 
     recovery = f"{network}.nwTt.frerRecoveryUl"
     primary_wins = get_scalar(scalars, recovery, "recoveredFromPrimary:count")
@@ -113,18 +129,37 @@ def main() -> int:
     received = get_scalar(scalars, f"{network}.tsnServer.app[0]", "packetReceived:count")
     payload_bytes = get_scalar(scalars, f"{network}.tsnServer.app[0]", "packetReceived:sum(packetBytes)")
 
+    coverage_modules = [f"{network}.car[{vehicle}].dsTt.frerReplicatorUl"
+                        for vehicle in range(args.vehicles)]
+    primary_only = sum(optional_scalar(scalars, module, "primaryOnly:count")
+                       for module in coverage_modules)
+    both_available = sum(optional_scalar(scalars, module, "bothAvailable:count")
+                         for module in coverage_modules)
+    replica_only = sum(optional_scalar(scalars, module, "replicaOnly:count")
+                       for module in coverage_modules)
+    no_member = sum(optional_scalar(scalars, module, "noMemberAvailable:count")
+                    for module in coverage_modules)
+    coverage_samples = primary_only + both_available + replica_only + no_member
+
     print(f"SUMO closed-loop uplink FRER analysis: {args.scalar_file}")
     print("\nAggregate reliability and FRER")
     print(f"  generated unique reports : {integer(generated)}")
     print(f"  primary / replica copies : {integer(primary)} / {integer(replica)}")
+    print(f"  unavailable P / R copies : {integer(primary_unavailable)} / {integer(replica_unavailable)}")
     print(f"  server unique reports    : {integer(received)} ({percent(received, generated)})")
     print(f"  unique reports missing   : {integer(max(0, generated - received))}")
     print(f"  duplicates eliminated    : {integer(duplicates)}")
     print(f"  recovery window overruns : {integer(overruns)}")
     print(f"  server payload           : {integer(payload_bytes)} bytes")
-    print(f"  redundancy factor        : {(primary + replica) / generated:.2f} copies/report")
+    print(f"  redundancy factor        : {(primary + replica) / generated:.2f} transmitted copies/report")
     print(f"  first copy via primary   : {integer(primary_wins)} ({percent(primary_wins, received)})")
     print(f"  first copy via replica   : {integer(replica_wins)} ({percent(replica_wins, received)})")
+    if coverage_samples:
+        print("\nGeographic availability at report generation")
+        print(f"  primary-only region      : {integer(primary_only)} ({percent(primary_only, coverage_samples)})")
+        print(f"  overlap (both available) : {integer(both_available)} ({percent(both_available, coverage_samples)})")
+        print(f"  replica-only region      : {integer(replica_only)} ({percent(replica_only, coverage_samples)})")
+        print(f"  outside both regions     : {integer(no_member)} ({percent(no_member, coverage_samples)})")
 
     histogram = histograms.get((f"{network}.tsnServer.app[0]", "endToEndDelay:histogram"))
     if histogram is not None and histogram.fields.get("count", 0):
@@ -141,24 +176,32 @@ def main() -> int:
         print(f"  at/above {args.deadline_ms:g} ms       : {count - compliant:,}/{count:,} ({percent(count - compliant, count)})")
 
     print("\nPer-vehicle source and replication health")
-    print("  UE   generated   primary   replica   no-route   wrong-MAC   status")
+    print("  UE   generated   primary   replica   P-unavail   R-unavail   no-route   wrong-MAC   status")
     unhealthy = False
-    for vehicle, sent, first, second, route_drops, mac_drops in rows:
-        healthy = sent > 0 and first == sent and second == sent and route_drops == 0 and mac_drops == 0
+    for vehicle, sent, first, second, first_down, second_down, route_drops, mac_drops in rows:
+        healthy = (sent > 0 and first + first_down == sent and second + second_down == sent
+                   and first + second >= sent and route_drops == 0 and mac_drops == 0)
         unhealthy |= not healthy
-        print(f"  {vehicle:>2}   {sent:>9,}   {first:>7,}   {second:>7,}   {route_drops:>8,}   {mac_drops:>9,}   {'OK' if healthy else 'FAIL'}")
+        print(f"  {vehicle:>2}   {sent:>9,}   {first:>7,}   {second:>7,}   {first_down:>9,}   {second_down:>9,}   {route_drops:>8,}   {mac_drops:>9,}   {'OK' if healthy else 'FAIL'}")
 
     invariant_failures: list[str] = []
     if received != generated:
         invariant_failures.append("server delivery does not equal generated reports")
-    if primary != generated or replica != generated:
-        invariant_failures.append("FRER did not create both copies for every report")
+    if primary + primary_unavailable != generated or replica + replica_unavailable != generated:
+        invariant_failures.append("FRER member availability accounting does not equal generated reports")
+    if primary + replica < generated:
+        invariant_failures.append("some report had no available FRER member")
     if primary_wins + replica_wins != received:
         invariant_failures.append("FRER accepted-copy accounting does not equal server delivery")
-    if duplicates != received:
-        invariant_failures.append("one duplicate was not eliminated per delivered report")
+    expected_duplicates = primary + replica - received
+    if duplicates != expected_duplicates:
+        invariant_failures.append("duplicate accounting does not match transmitted copies")
     if no_route or wrong_mac or overruns or unhealthy:
         invariant_failures.append("one or more local health checks failed")
+    if coverage_samples and coverage_samples != generated:
+        invariant_failures.append("geographic availability accounting does not equal generated reports")
+    if no_member:
+        invariant_failures.append("reports were generated outside both gNB regions")
 
     print("\nValidation: " + ("PASS" if not invariant_failures else "FAIL"))
     for failure in invariant_failures:

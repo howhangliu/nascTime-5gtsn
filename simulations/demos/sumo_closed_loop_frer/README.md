@@ -29,6 +29,33 @@ the NW-TT, and delivery to the TSN server.
 
 Results are written to `simulations/demos/sumo_closed_loop_frer/results/`.
 
+## Partial-overlap coverage scenario
+
+`SumoClosedLoopUplinkFrerPartialOverlap` keeps the same 100 m x 100 m SUMO
+grid and traffic but places the gNBs at `(15,50,10)` m and `(85,50,10)` m.
+Each FRER member has an explicit 70 m horizontal availability radius. The
+union covers the full square, while the geometry creates three regions:
+
+- left-only, where only the primary copy can be transmitted;
+- a lens-shaped middle overlap, where both copies are transmitted;
+- right-only, where only the replica can be transmitted.
+
+This deterministic availability abstraction is applied before the cellular
+stacks; packets that are inside a member's region still use the configured
+Simu5G `INDOOR_HOTSPOT` channel. It is deliberately separate from path loss:
+the 70 m boundary is a scenario-defined service limit, not a claim that radio
+reception physically stops at exactly 70 m.
+
+Run and validate it with:
+
+```sh
+./bin/sumo_partial_overlap_frer_test.sh
+```
+
+Its results are written to `results/partial_overlap/`. The analyzer reports
+`P-unavail` and `R-unavail` per vehicle to show time spent outside each member
+region, along with delivery, first-arriving member, duplicates, and delay.
+
 ## Analyze results
 
 After a run, generate aggregate reliability/latency metrics and a per-vehicle

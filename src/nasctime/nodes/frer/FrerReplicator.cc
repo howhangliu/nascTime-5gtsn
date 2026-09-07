@@ -19,6 +19,7 @@
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/linklayer/ethernet/common/EthernetMacHeader_m.h"
 #include "inet/networklayer/common/InterfaceTable.h"
+#include "inet/common/ModuleAccess.h"
 
 Define_Module(FrerReplicator);
 
@@ -34,6 +35,17 @@ void FrerReplicator::initialize(int stage)
         replicaDscp = par("replicaDscp");
         transportBindingType = par("transportBinding").stdstringValue();
         ethernetFramed     = par("ethernetFramed");
+        coverageFilteringEnabled = par("coverageFilteringEnabled");
+        if (coverageFilteringEnabled) {
+            primaryCenterX = par("primaryCenterX").doubleValue();
+            primaryCenterY = par("primaryCenterY").doubleValue();
+            replicaCenterX = par("replicaCenterX").doubleValue();
+            replicaCenterY = par("replicaCenterY").doubleValue();
+            coverageRadius = par("coverageRadius").doubleValue();
+            if (coverageRadius <= 0)
+                throw cRuntimeError("FrerReplicator: coverageRadius must be positive");
+            mobility = getModuleFromPar<IMobility>(par("mobilityModule"), this);
+        }
 
         // Parse comma-separated DSCP values
         const char *streams = par("frerStreams").stringValue();
@@ -47,6 +59,12 @@ void FrerReplicator::initialize(int stage)
         primarySentSignal      = registerSignal("primarySent");
         replicaSentSignal      = registerSignal("replicaSent");
         passedThroughSignal    = registerSignal("passedThrough");
+        primaryUnavailableSignal = registerSignal("primaryUnavailable");
+        replicaUnavailableSignal = registerSignal("replicaUnavailable");
+        primaryOnlySignal = registerSignal("primaryOnly");
+        bothAvailableSignal = registerSignal("bothAvailable");
+        replicaOnlySignal = registerSignal("replicaOnly");
+        noMemberAvailableSignal = registerSignal("noMemberAvailable");
     }
     else if (stage == INITSTAGE_NETWORK_INTERFACE_CONFIGURATION) {
         initializeTransportBinding();
@@ -61,6 +79,19 @@ void FrerReplicator::initialize(int stage)
         EV_INFO << "} replicaDscp=" << replicaDscp
                 << " binding=" << transportBindingType << endl;
     }
+}
+
+bool FrerReplicator::isMemberAvailable(bool replica) const
+{
+    if (!coverageFilteringEnabled)
+        return true;
+
+    const Coord position = mobility->getCurrentPosition();
+    const double centerX = replica ? replicaCenterX : primaryCenterX;
+    const double centerY = replica ? replicaCenterY : primaryCenterY;
+    const double dx = position.x - centerX;
+    const double dy = position.y - centerY;
+    return dx * dx + dy * dy <= coverageRadius * coverageRadius;
 }
 
 void FrerReplicator::initializeTransportBinding()
@@ -261,17 +292,47 @@ void FrerReplicator::replicateAndSend(Packet *pkt, int dscp)
         transportBinding->prepareMemberStreams(pkt, replica);
     }
 
-    // --- Send primary ---
-    numPrimarySent++;
-    numReplicated++;
-    emit(primarySentSignal, numPrimarySent);
-    emit(replicatedFramesSignal, numReplicated);
-    send(pkt, outGateId);
+    const bool primaryAvailable = isMemberAvailable(false);
+    const bool replicaAvailable = isMemberAvailable(true);
+    if (coverageFilteringEnabled) {
+        if (primaryAvailable && replicaAvailable)
+            emit(bothAvailableSignal, ++numBothAvailable);
+        else if (primaryAvailable)
+            emit(primaryOnlySignal, ++numPrimaryOnly);
+        else if (replicaAvailable)
+            emit(replicaOnlySignal, ++numReplicaOnly);
+        else
+            emit(noMemberAvailableSignal, ++numNoMemberAvailable);
+    }
 
-    // --- Send replica ---
-    numReplicaSent++;
-    emit(replicaSentSignal, numReplicaSent);
-    send(replica, outGateId);
+    // Count one replicated source frame regardless of which currently
+    // available member streams can carry its copies.
+    numReplicated++;
+    emit(replicatedFramesSignal, numReplicated);
+
+    // --- Send primary when the UE is inside its configured coverage ---
+    if (primaryAvailable) {
+        numPrimarySent++;
+        emit(primarySentSignal, numPrimarySent);
+        send(pkt, outGateId);
+    }
+    else {
+        numPrimaryUnavailable++;
+        emit(primaryUnavailableSignal, numPrimaryUnavailable);
+        delete pkt;
+    }
+
+    // --- Send replica when the UE is inside its configured coverage ---
+    if (replicaAvailable) {
+        numReplicaSent++;
+        emit(replicaSentSignal, numReplicaSent);
+        send(replica, outGateId);
+    }
+    else {
+        numReplicaUnavailable++;
+        emit(replicaUnavailableSignal, numReplicaUnavailable);
+        delete replica;
+    }
 
     EV_INFO << "FrerReplicator: stream=" << dscp
             << " seq=" << seqNum
@@ -290,6 +351,12 @@ void FrerReplicator::finish()
             << " replicated=" << numReplicated
             << " primarySent=" << numPrimarySent
             << " replicaSent=" << numReplicaSent
+            << " primaryUnavailable=" << numPrimaryUnavailable
+            << " replicaUnavailable=" << numReplicaUnavailable
+            << " primaryOnly=" << numPrimaryOnly
+            << " bothAvailable=" << numBothAvailable
+            << " replicaOnly=" << numReplicaOnly
+            << " noMemberAvailable=" << numNoMemberAvailable
             << " passedThrough=" << numPassedThrough << endl;
 
     delete transportBinding;
