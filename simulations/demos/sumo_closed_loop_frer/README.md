@@ -28,3 +28,23 @@ address drops, primary and replica FRER transmission, duplicate elimination at
 the NW-TT, and delivery to the TSN server.
 
 Results are written to `simulations/demos/sumo_closed_loop_frer/results/`.
+
+## Analyze results
+
+After a run, generate aggregate reliability/latency metrics and a per-vehicle
+source/replication health table with:
+
+```sh
+./simulations/demos/sumo_closed_loop_frer/analyze_results.py
+```
+
+Pass another scalar file or deadline when needed, for example:
+
+```sh
+./simulations/demos/sumo_closed_loop_frer/analyze_results.py path/to/run.sca --deadline-ms 10
+```
+
+The sink statistics are aggregate. Per-vehicle rows verify report generation,
+both FRER copies, routing drops, and Ethernet-address drops; attributing
+received packets and delay to individual vehicles requires additional sink
+instrumentation in a future run.

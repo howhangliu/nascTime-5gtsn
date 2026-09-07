@@ -100,3 +100,4 @@ grep -Eq '^scalar .*tsnServer\.app\[0\] packetReceived:count [1-9]' "$sca"
 
 echo "SUMO closed-loop uplink FRER test passed ($reporter_count vehicle reporters)."
 echo "Results: $scenario_dir/results"
+"$scenario_dir/analyze_results.py" "$sca"
