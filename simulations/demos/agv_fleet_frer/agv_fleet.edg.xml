@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+    <!-- Centre shuttle, C0-C4 and reverse. -->
+    <edge id="C0C1" from="C0" to="C1" numLanes="1" speed="2.5"/>
+    <edge id="C1C2" from="C1" to="C2" numLanes="1" speed="2.5"/>
+    <edge id="C2C3" from="C2" to="C3" numLanes="1" speed="2.5"/>
+    <edge id="C3C4" from="C3" to="C4" numLanes="1" speed="2.5"/>
+    <edge id="C4C3" from="C4" to="C3" numLanes="1" speed="2.5"/>
+    <edge id="C3C2" from="C3" to="C2" numLanes="1" speed="2.5"/>
+    <edge id="C2C1" from="C2" to="C1" numLanes="1" speed="2.5"/>
+    <edge id="C1C0" from="C1" to="C0" numLanes="1" speed="2.5"/>
+
+    <!-- Northwest and southeast 150 m loops. -->
+    <edge id="A2A3" from="A2" to="A3" numLanes="1" speed="1.5"/>
+    <edge id="A3A4" from="A3" to="A4" numLanes="1" speed="1.5"/>
+    <edge id="A4B4" from="A4" to="B4" numLanes="1" speed="1.5"/>
+    <edge id="B4B3" from="B4" to="B3" numLanes="1" speed="1.5"/>
+    <edge id="B3B2" from="B3" to="B2" numLanes="1" speed="1.5"/>
+    <edge id="B2A2" from="B2" to="A2" numLanes="1" speed="1.5"/>
+    <edge id="E2E1" from="E2" to="E1" numLanes="1" speed="1.5"/>
+    <edge id="E1E0" from="E1" to="E0" numLanes="1" speed="1.5"/>
+    <edge id="E0D0" from="E0" to="D0" numLanes="1" speed="1.5"/>
+    <edge id="D0D1" from="D0" to="D1" numLanes="1" speed="1.5"/>
+    <edge id="D1D2" from="D1" to="D2" numLanes="1" speed="1.5"/>
+    <edge id="D2E2" from="D2" to="E2" numLanes="1" speed="1.5"/>
+
+    <!-- Parking aisle for the three static workcell arm UEs. -->
+    <edge id="workcell" from="W0" to="W1" numLanes="1" speed="1.0"/>
+
+    <!-- Never referenced by a route; these short edges only enlarge the
+         network bounding box beyond the driven 0..100 m floor. -->
+    <edge id="paddingSW" from="PAD_SW0" to="PAD_SW1" numLanes="1" speed="1.0"/>
+    <edge id="paddingNE" from="PAD_NE0" to="PAD_NE1" numLanes="1" speed="1.0"/>
+</edges>

@@ -8,5 +8,7 @@ simple DynamicVehicleNetworkConfigurator
         double displayScale = default(5);
         double displayOffsetX = default(430);
         double displayOffsetY = default(100);
+        bool displayInvertY = default(false);
+        double displayHeight = default(500);
         @display("i=block/cogwheel");
 }

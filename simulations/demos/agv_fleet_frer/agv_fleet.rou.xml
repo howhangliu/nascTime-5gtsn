@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <vType id="safetyAgv" vClass="delivery" length="2.5" accel="1.2" decel="2.5" maxSpeed="2.5"/>
+    <vType id="standardAgv" vClass="delivery" length="2.5" accel="1.0" decel="2.0" maxSpeed="1.5"/>
+    <vType id="arm" vClass="delivery" length="1.0" accel="1.0" decel="2.0" maxSpeed="1.0"/>
+
+    <!-- Keep every moving UE in SUMO beyond the 620 s OMNeT++ horizon.
+         SUMO lane lengths exclude junction interiors, so route duration must
+         not be estimated from the 25 m node spacing alone. -->
+    <route id="centre" edges="C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0 C0C1 C1C2 C2C3 C3C4 C4C3 C3C2 C2C1 C1C0"/>
+    <route id="loopNW" edges="A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2 A2A3 A3A4 A4B4 B4B3 B3B2 B2A2"/>
+    <route id="loopSE" edges="E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2 E2E1 E1E0 E0D0 D0D1 D1D2 D2E2"/>
+    <route id="workcellRoute" edges="workcell"/>
+
+    <!-- Departure order is intentional: car[0..2], car[3..4], car[5..6], car[7..9]. -->
+    <vehicle id="agvS0" type="safetyAgv" route="centre" depart="0.00" departPos="random_free"/>
+    <vehicle id="agvS1" type="safetyAgv" route="centre" depart="0.01" departPos="random_free"/>
+    <vehicle id="agvS2" type="safetyAgv" route="centre" depart="0.02" departPos="random_free"/>
+    <vehicle id="agvN0" type="standardAgv" route="loopNW" depart="0.03" departPos="random_free"/>
+    <vehicle id="agvN1" type="standardAgv" route="loopNW" depart="0.04" departPos="random_free"/>
+    <vehicle id="agvN2" type="standardAgv" route="loopSE" depart="0.05" departPos="random_free"/>
+    <vehicle id="agvN3" type="standardAgv" route="loopSE" depart="0.06" departPos="random_free"/>
+    <vehicle id="arm0" type="arm" route="workcellRoute" depart="0.07" departPos="5"><stop lane="workcell_0" endPos="5" duration="700" parking="true"/></vehicle>
+    <vehicle id="arm1" type="arm" route="workcellRoute" depart="0.08" departPos="10"><stop lane="workcell_0" endPos="10" duration="700" parking="true"/></vehicle>
+    <vehicle id="arm2" type="arm" route="workcellRoute" depart="0.09" departPos="15"><stop lane="workcell_0" endPos="15" duration="700" parking="true"/></vehicle>
+</routes>

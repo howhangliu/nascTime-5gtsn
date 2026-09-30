@@ -93,7 +93,9 @@ void DynamicVehicleNetworkConfigurator::updateVehicleDisplay(cModule *vehicle)
 
     const Coord position = mobility->getCurrentPosition();
     const double x = par("displayOffsetX").doubleValue() + par("displayScale").doubleValue() * position.x;
-    const double y = par("displayOffsetY").doubleValue() + par("displayScale").doubleValue() * position.y;
+    const double scaledY = par("displayScale").doubleValue() * position.y;
+    const double y = par("displayOffsetY").doubleValue()
+            + (par("displayInvertY").boolValue() ? par("displayHeight").doubleValue() - scaledY : scaledY);
     vehicle->getDisplayString().setTagArg("p", 0, x);
     vehicle->getDisplayString().setTagArg("p", 1, y);
 }
