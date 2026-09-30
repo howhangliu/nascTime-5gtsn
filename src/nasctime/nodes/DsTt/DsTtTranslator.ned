@@ -18,6 +18,7 @@ simple DsTtTranslator
         @display("i=block/routing");
         @class(::DsTtTranslator);
 		int gptpEncapUdpPort = default(30001);  // must match NW-TT's port
+		string mappedPcpValues = default("0,1,2,3,4,5,6,7"); // PCP values translated to IPv4 DSCP on uplink
 		
         // --- Signals & statistics ---
         @signal[tsnToUeForwarded](type=long);
