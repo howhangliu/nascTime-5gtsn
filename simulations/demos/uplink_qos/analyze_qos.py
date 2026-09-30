@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 VECTOR_RE = re.compile(
-    r"^vector\s+(\d+)\s+\S+\.tsnDeviceA\.app\[(\d+)\]\s+endToEndDelay:vector\b"
+    r"^vector\s+(\d+)\s+\S+\.tsnDeviceA\.app\[(\d+)\]\s+rcvdPkLifetime:vector\b"
 )
 
 
