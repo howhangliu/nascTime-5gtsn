@@ -20,13 +20,14 @@
 #include "inet/common/packet/chunk/BytesChunk.h"
 #include "inet/linklayer/common/MacAddressTag_m.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
+#include "inet/linklayer/common/PcpTag_m.h"
 #include "inet/linklayer/ethernet/common/EthernetMacHeader_m.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
+#include "inet/networklayer/common/DscpTag_m.h"
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "simu5g/common/binder/Binder.h"
 #include "inet/transportlayer/udp/UdpHeader_m.h"
-#include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/linklayer/ieee8021q/Ieee8021qTagHeader_m.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/common/IProtocolRegistrationListener.h"
@@ -126,7 +127,25 @@ void NwTtTranslator::initialize(int stage)
                 std::string tsnAddr = entry->get("address").stdstringValue();
                 std::string ueModPath = entry->get("ue").stdstringValue();
 
-                auto tsnIp = L3AddressResolver().resolve(tsnAddr.c_str());
+                // Some derived scenarios (notably SUMO/Veins) inherit a
+                // static endpoint profile but create their endpoints later at
+                // runtime. Do not abort initialization for those stale paths;
+                // their dynamic configurator registers them with the binder
+                // after TraCI creates the vehicle.
+                // L3AddressResolver::tryResolve() still throws when the
+                // module path itself is absent, so check the model first.
+                auto *tsnModule = getSimulation()->findModuleByPath(tsnAddr.c_str());
+                if (tsnModule == nullptr) {
+                    EV_WARN << "NwTtTranslator: skipping unavailable TSN endpoint "
+                            << tsnAddr << " (ue=" << ueModPath << ")" << endl;
+                    continue;
+                }
+                L3Address tsnIp = L3AddressResolver().addressOf(tsnModule);
+                if (tsnIp.isUnspecified()) {
+                    EV_WARN << "NwTtTranslator: skipping TSN endpoint without an address "
+                            << tsnAddr << " (ue=" << ueModPath << ")" << endl;
+                    continue;
+                }
                 auto *ueModule = getModuleByPath(ueModPath.c_str());
 
                 if (ueModule) {
@@ -341,8 +360,13 @@ void NwTtTranslator::handleIpPacket(Packet *pkt)
 {
     simtime_t t0 = simTime();
 
-    // UdpSocket has stripped the UDP header.
-    // Remaining payload is the raw TSN frame body.
+    // IPv4 and UDP decapsulation preserve DSCP as an indication tag. The
+    // packet data starts at the application payload here, so it must not be
+    // interpreted as an IPv4 header.
+    auto dscpInd = pkt->findTag<DscpInd>();
+    int pcp = dscpInd ? dscpInd->getDifferentiatedServicesCodePoint() : 0;
+    if (pcp < 0 || pcp > 7)
+        pcp = 0;
     auto payload = pkt->peekData();
 
     // Create Ethernet frame for the TSN side
@@ -356,6 +380,7 @@ void NwTtTranslator::handleIpPacket(Packet *pkt)
 
     // Set protocol tag for EtherType
     ethPkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ipv4);
+    ethPkt->addTagIfAbsent<PcpReq>()->setPcp(pcp);
 
     // Send toward TSN switch
     send(ethPkt, ethOutGateId);

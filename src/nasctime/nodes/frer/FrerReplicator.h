@@ -19,6 +19,7 @@
 #include "nasctime/nodes/frer/IFrerTransportBinding.h"
 #include "inet/common/packet/Packet.h"
 #include "inet/common/InitStages.h"
+#include "inet/mobility/contract/IMobility.h"
 
 using namespace omnetpp;
 using namespace inet;
@@ -31,6 +32,13 @@ class FrerReplicator : public cSimpleModule
     int replicaDscp;
     std::string transportBindingType;
     bool ethernetFramed = false;
+    bool coverageFilteringEnabled = false;
+    double primaryCenterX = 0;
+    double primaryCenterY = 0;
+    double replicaCenterX = 0;
+    double replicaCenterY = 0;
+    double coverageRadius = 0;
+    inet::IMobility *mobility = nullptr;
 
     // --- Transport binding (owned) ---
     IFrerTransportBinding *transportBinding = nullptr;
@@ -48,12 +56,24 @@ class FrerReplicator : public cSimpleModule
     simsignal_t primarySentSignal;
     simsignal_t replicaSentSignal;
     simsignal_t passedThroughSignal;
+    simsignal_t primaryUnavailableSignal;
+    simsignal_t replicaUnavailableSignal;
+    simsignal_t primaryOnlySignal;
+    simsignal_t bothAvailableSignal;
+    simsignal_t replicaOnlySignal;
+    simsignal_t noMemberAvailableSignal;
 
     // --- Counters ---
     long numReplicated    = 0;
     long numPrimarySent   = 0;
     long numReplicaSent   = 0;
     long numPassedThrough = 0;
+    long numPrimaryUnavailable = 0;
+    long numReplicaUnavailable = 0;
+    long numPrimaryOnly = 0;
+    long numBothAvailable = 0;
+    long numReplicaOnly = 0;
+    long numNoMemberAvailable = 0;
 
   protected:
     virtual int numInitStages() const override { return inet::NUM_INIT_STAGES; }
@@ -65,6 +85,9 @@ class FrerReplicator : public cSimpleModule
 
     /** Stream identification (802.1CB §6): is this packet FRER-eligible? */
     virtual bool isFrerEligible(Packet *pkt, int &dscp);
+
+    /** Whether the selected member is available at the UE's current position. */
+    bool isMemberAvailable(bool replica) const;
 
     /** Sequence generation (802.1CB §7.4): get next seq# for this stream. */
     virtual uint16_t nextSequenceNumber(int streamId);

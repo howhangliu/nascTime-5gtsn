@@ -1,0 +1,3 @@
+<cncConfig>
+    <!-- The baseline deliberately has no GCL. Both TT interfaces use FIFO queues. -->
+</cncConfig>

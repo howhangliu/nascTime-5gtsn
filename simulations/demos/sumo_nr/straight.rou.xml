@@ -1,0 +1,5 @@
+<routes>
+    <vType id="passenger" vClass="passenger" accel="2.6" decel="4.5" length="5.0" maxSpeed="20.0"/>
+    <route id="eastbound" edges="west_to_east"/>
+    <vehicle id="ue0" type="passenger" route="eastbound" depart="0.0" departSpeed="20.0"/>
+</routes>

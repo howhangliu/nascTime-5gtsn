@@ -70,4 +70,10 @@ simple TunableNrChannelModel extends NrChannelModel
         // model computes SINR for both directions when a UE requests feedback,
         // so "UL" keeps an uplink study from perturbing the downlink.
         string impairedDirection @enum(UL,DL,BOTH) = default("BOTH");
+
+        // Optional UE MAC node ID to impair. -1 applies the impairment to all
+        // UEs, preserving the original behavior. For uplink frames the UE is
+        // the sourceId; this allows an active leg to become bad while a
+        // standby UE attached to the same gNodeB remains healthy.
+        int impairedNodeId = default(-1);
 }

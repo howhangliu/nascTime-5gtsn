@@ -1,0 +1,5 @@
+<launch>
+    <copy file="agv_fleet.net.xml"/>
+    <copy file="agv_fleet.rou.xml"/>
+    <copy file="agv_fleet.sumocfg" type="config"/>
+</launch>

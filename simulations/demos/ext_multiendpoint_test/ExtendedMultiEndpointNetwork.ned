@@ -122,7 +122,16 @@ network ExtendedMultiEndpointNetwork
 
         // Per-endpoint: UE + DS-TT + TSN Device B
         ue[numEndpoints]: NRUeDsTt {
-            @display("p=900,350");
+            // Physical coordinates below are used by the radio/channel model.
+            // Qtenv uses a separate column layout so dense UE deployments do
+            // not render all device icons and labels on top of each other.
+            @display("p=900,250,c,150");
+            mobility.initialX = 455m + (index % 10) * 10m;
+            mobility.initialY = 205m + (index / 10) * 10m;
+            mobility.initialZ = 0m;
+            mobility.initFromDisplayString = false;
+            mobility.updateFromDisplayString = false;
+            mobility.updateDisplayString = false;
         }
         dsTt[numEndpoints]: DsTt {
             @display("p=1120,250,c,150");

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nodes>
+    <!-- Five-by-five reference grid: columns A..E, rows 0..4, 25 m spacing. -->
+    <node id="A2" x="0" y="50" type="priority"/>
+    <node id="A3" x="0" y="75" type="priority"/>
+    <node id="A4" x="0" y="100" type="priority"/>
+    <node id="B2" x="25" y="50" type="priority"/>
+    <node id="B3" x="25" y="75" type="priority"/>
+    <node id="B4" x="25" y="100" type="priority"/>
+    <node id="C0" x="50" y="0" type="priority"/>
+    <node id="C1" x="50" y="25" type="priority"/>
+    <node id="C2" x="50" y="50" type="priority"/>
+    <node id="C3" x="50" y="75" type="priority"/>
+    <node id="C4" x="50" y="100" type="priority"/>
+    <node id="D0" x="75" y="0" type="priority"/>
+    <node id="D1" x="75" y="25" type="priority"/>
+    <node id="D2" x="75" y="50" type="priority"/>
+    <node id="E0" x="100" y="0" type="priority"/>
+    <node id="E1" x="100" y="25" type="priority"/>
+    <node id="E2" x="100" y="50" type="priority"/>
+    <node id="W0" x="30" y="12" type="priority"/>
+    <node id="W1" x="50" y="12" type="priority"/>
+
+    <!-- Unused padding geometry keeps all driven lanes strictly inside the
+         TraCI boundary. Veins rejects tiny negative values such as -0.00. -->
+    <node id="PAD_SW0" x="-1" y="-1" type="priority"/>
+    <node id="PAD_SW1" x="-0.9" y="-1" type="priority"/>
+    <node id="PAD_NE0" x="101" y="101" type="priority"/>
+    <node id="PAD_NE1" x="100.9" y="101" type="priority"/>
+</nodes>

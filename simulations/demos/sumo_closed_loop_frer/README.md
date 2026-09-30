@@ -1,0 +1,77 @@
+# SUMO closed-loop uplink FRER demo
+
+This demo models a 100 m x 100 m industrial service area with two gNBs at
+opposite corners and ten SUMO vehicles moving over a 3 x 3 road grid. Each
+vehicle contains a TSN position source, DS-TT, and dual-connectivity NR UE.
+
+Every source emits one 20-byte report every 10 ms. The payload fields are five
+network-byte-order 32-bit values: sequence number, vehicle index, X position
+(mm), Y position (mm), and speed (mm/s). DSCP 7 packets are replicated by the
+vehicle DS-TT; the DSCP 8 copy is routed over the second NR stack/gNB/UPF. The
+NW-TT eliminates duplicates before the report reaches `tsnServer` UDP port
+7000. A dynamic configurator refreshes INET routes/addresses whenever Veins
+adds a car and maps each embedded TSN source to that car's Simu5G node ID.
+
+## Run on the Linux server
+
+From the nascTime repository root, make sure OMNeT++, INET, Simu5G, Veins,
+SUMO, and `netconvert` are available, then run:
+
+```sh
+./bin/sumo_closed_loop_frer_test.sh
+```
+
+The script regenerates the SUMO network, validates its routes, starts
+`veins_launchd`, rebuilds nascTime, runs the 30-second Cmdenv simulation, and
+checks the complete data path: ten reporters, no source-routing or UE Ethernet
+address drops, primary and replica FRER transmission, duplicate elimination at
+the NW-TT, and delivery to the TSN server.
+
+Results are written to `simulations/demos/sumo_closed_loop_frer/results/`.
+
+## Partial-overlap coverage scenario
+
+`SumoClosedLoopUplinkFrerPartialOverlap` keeps the same 100 m x 100 m SUMO
+grid and traffic but places the gNBs at `(15,50,10)` m and `(85,50,10)` m.
+Each FRER member has an explicit 70 m horizontal availability radius. The
+union covers the full square, while the geometry creates three regions:
+
+- left-only, where only the primary copy can be transmitted;
+- a lens-shaped middle overlap, where both copies are transmitted;
+- right-only, where only the replica can be transmitted.
+
+This deterministic availability abstraction is applied before the cellular
+stacks; packets that are inside a member's region still use the configured
+Simu5G `INDOOR_HOTSPOT` channel. It is deliberately separate from path loss:
+the 70 m boundary is a scenario-defined service limit, not a claim that radio
+reception physically stops at exactly 70 m.
+
+Run and validate it with:
+
+```sh
+./bin/sumo_partial_overlap_frer_test.sh
+```
+
+Its results are written to `results/partial_overlap/`. The analyzer reports
+`P-unavail` and `R-unavail` per vehicle to show time spent outside each member
+region, along with delivery, first-arriving member, duplicates, and delay.
+
+## Analyze results
+
+After a run, generate aggregate reliability/latency metrics and a per-vehicle
+source/replication health table with:
+
+```sh
+./simulations/demos/sumo_closed_loop_frer/analyze_results.py
+```
+
+Pass another scalar file or deadline when needed, for example:
+
+```sh
+./simulations/demos/sumo_closed_loop_frer/analyze_results.py path/to/run.sca --deadline-ms 10
+```
+
+The sink statistics are aggregate. Per-vehicle rows verify report generation,
+both FRER copies, routing drops, and Ethernet-address drops; attributing
+received packets and delay to individual vehicles requires additional sink
+instrumentation in a future run.

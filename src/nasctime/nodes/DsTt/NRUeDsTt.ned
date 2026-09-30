@@ -13,6 +13,7 @@ package nasctime.nodes.DsTt;
 
 import inet.linklayer.ethernet.basic.EthernetInterface;
 import simu5g.nodes.NrUe;
+import simu5g.stack.sdap.common.ReflectiveQosTable;
 
 module NRUeDsTt extends NrUe
 {
@@ -24,6 +25,11 @@ module NRUeDsTt extends NrUe
 
     gates:
         inout ethg @labels(EthernetSignal);
+
+    submodules:
+        reflectiveQosTable: ReflectiveQosTable {
+            @display("p=600,650");
+        }
 
     connections:
         ethg <--> eth[0].phys;
