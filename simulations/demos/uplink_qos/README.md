@@ -21,13 +21,18 @@ and creates sustained radio contention without making the critical bearer
 itself permanently backlogged:
 
 - `Baseline`: untagged traffic, QFI/DRB 0, and the `MAXCI` uplink scheduler.
-- `Qos`: UDP port 5000 is PCP 6 and port 5001 is PCP 0. The DS-TT translates
-  PCP to DSCP, UE SDAP maps DSCP to QFI, and QFI 6 selects DRB 1. SDAP assigns
+- `Qos`: TSN Device A sends a small downlink packet on each UDP flow before
+  uplink traffic starts. Port 5000 is PCP 6 and port 5001 is PCP 0. The NW-TT
+  translates PCP to DSCP, the UPF maps DSCP to QFI, and gNB SDAP marks the
+  downlink packet for reflective QoS. The UE learns each reverse-flow QFI from
+  that packet. Its uplink SDAP then uses the learned QFI to select a DRB. SDAP assigns
   DRB 1 to the UE's `CONVERSATIONAL` logical-channel group and DRB 0 to
   `BACKGROUND`, so UE MAC serves the high-priority DRB first in each UL grant.
 
-Both applications set DSCP 0 themselves. Thus QFI 6 can only appear if the
-complete PCP -> DSCP -> ToS metadata -> QFI chain works.
+Both applications set DSCP 0 themselves. The UE's DSCP-to-QFI fallback is
+disabled. Thus uplink QFI 6 requires the downlink reflective QoS rule; uplink
+PCP-to-DSCP translation alone cannot select it. The downlink probe and uplink
+packet use the same IP addresses and UDP ports in opposite directions.
 
 The critical load is deliberately much smaller than uplink capacity. An
 earlier equal-load version offered a continuously backlogged 16 Mbps critical
@@ -43,8 +48,8 @@ From this directory, run:
 python3 analyze_qos.py
 ```
 
-The analyzer reports count, mean, p50, p95, and p99 end-to-end latency for
-both flows. It also validates bearer use:
+The analyzer reports count, mean, p50, p95, and p99 received-packet lifetime
+at TSN Device A for both uplink flows. It also validates bearer use:
 
 ```text
 Baseline: DRB check PASS (DRB 0 only)
@@ -55,20 +60,12 @@ Do not interpret the latency comparison unless both checks pass.
 The analyzer also fails if either receiver stream has zero samples; QoS must
 prioritize DRB 1 without starving DRB 0.
 
-## Reference result
+## Expected result
 
-With seed 42, a 5 s run, and a 1 s warm-up, the validated implementation gave:
-
-| Flow | Baseline mean / p95 | QoS mean / p95 | QoS samples |
-|---|---:|---:|---:|
-| Critical, PCP 6 | 33.179 / 39.013 ms | 20.166 / 34.505 ms | 3686 |
-| Best effort, PCP 0 | 33.407 / 39.020 ms | 36.329 / 42.010 ms | 5737 |
-
-Best effort continued throughout all four measured one-second intervals
-(1427, 1441, 1440, and 1429 receptions), demonstrating priority without
-starvation. Exact values may change with Simu5G or INET versions; the required
-invariants are two active DRBs, nonzero delivery for both flows, and lower
-critical-stream latency in `Qos` than in `Baseline`.
+The required invariants are two active DRBs in `Qos`, only DRB 0 in
+`Baseline`, nonzero uplink delivery for both flows, and lower critical-stream
+latency in `Qos` than in `Baseline`. The previous reference numbers used the
+DSCP fallback and do not apply to this reflective QoS version.
 
 ## Implementation boundary
 
