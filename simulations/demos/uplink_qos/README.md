@@ -1,5 +1,15 @@
 # Uplink QoS demo
 
+Authors: Afshin Zanganeh, How-Hang Liu
+
+## Implementation
+
+`UplinkQosNetwork.ned` defines the scenario, and `omnetpp.ini` configures its
+traffic and bearer mapping. `NRUeDsTt.ned` instantiates the UE's reflective QoS
+table. Simu5G implements rule learning and expiry in
+`src/simu5g/stack/sdap/common/ReflectiveQosTable.cc` and QFI/DRB selection in
+`src/simu5g/stack/sdap/NrSdap.cc`.
+
 Use `omnetpp.ini` for the QoS experiment. It uses the dedicated
 `UplinkQosNetwork`, which contains exactly one path:
 

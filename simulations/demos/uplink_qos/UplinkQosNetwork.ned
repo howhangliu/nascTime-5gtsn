@@ -1,3 +1,14 @@
+//
+//                  nascTime
+//
+// Authors: Afshin Zanganeh, How-Hang Liu
+//
+// This file is part of a software released under the license included in file
+// "LICENSE.txt". Please read LICENSE.txt and README files before using it.
+// The above files and the present reference are part of the software itself,
+// and cannot be removed from it.
+//
+
 package nasctime.simulations.demos.uplink_qos;
 
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;

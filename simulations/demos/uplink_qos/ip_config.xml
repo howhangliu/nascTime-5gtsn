@@ -1,3 +1,5 @@
+<!-- nascTime uplink reflective QoS demo
+     Authors: Afshin Zanganeh, How-Hang Liu -->
 <config>
     <!-- Addressing for the standalone uplink QoS demo. -->
     <interface hosts="tsnDeviceA" address="10.0.0.10" netmask="255.255.255.0"/>

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Validate the standalone uplink QoS demo using only the Python standard library."""
+"""Validate the standalone uplink QoS demo using only the Python standard library.
+
+Authors: Afshin Zanganeh, How-Hang Liu
+"""
 
 from __future__ import annotations
 
