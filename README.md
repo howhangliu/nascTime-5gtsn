@@ -37,6 +37,12 @@ Simu5G do I need?" below for the exact split.
 | NW-TT/DS-TT bridge, QoS mapping, gPTP, BMCA, multi-endpoint scaling (`tests/`, `simulations/demos/multi_endpoint_test`, `ext_multiendpoint_test`) | **Vanilla Simu5G v1.5.0** — no changes needed |
 | FRER — any scenario in `simulations/demos/frer_test/` (F1–F4), and therefore a full `make tests` run | **[nascTime's Simu5G fork](https://github.com/MohamedSeliem/Simu5G/tree/nasctime-v1.0)**, tag `nasctime-v1.0` |
 
+The two-gNB **uplink** FRER configurations (`FrerUplinkDualConn_N1`, `_N2`,
+and `_N10`) additionally require the companion Simu5G
+[`feat/uplink-frer`](https://github.com/howhangliu/Simu5G/tree/feat/uplink-frer)
+branch. Its `Ip2Nic` preserves IPv4 ToS in `FlowControlInfo`, which the UE's
+`NrDcMux` and SDAP use to send the replica on DRB 4 through the second gNB.
+
 The fork is a strict superset of vanilla Simu5G v1.5.0 — everything that
 works against vanilla also works against the fork. **If you're setting
 up nascTime for the first time and aren't sure which scenarios you'll
@@ -764,7 +770,8 @@ re-record them and for the known debug-library limitation.
    scenario configurations.
 
 5. **FRER NR dual-connectivity transport diversity (F4)** is implemented for
-   the validated two-gNB uplink scenario.
+   the two-gNB uplink scenario with the companion Simu5G `feat/uplink-frer`
+   branch.
 
 6. **Vanilla Simu5G v1.5.0 is sufficient only for non-FRER features.**
    Earlier versions of this README incorrectly stated no Simu5G source
