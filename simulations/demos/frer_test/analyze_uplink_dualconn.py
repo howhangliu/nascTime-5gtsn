@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Authors: Afshin Zanganeh and How-Hang Liu (Technical University of Dresden)
 """Validate the essential invariants of the two-gNB uplink FRER run."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Authors: Afshin Zanganeh and How-Hang Liu (Technical University of Dresden)
 """Validate aggregate and per-UE invariants for the N=100 uplink FRER run."""
 
 from __future__ import annotations

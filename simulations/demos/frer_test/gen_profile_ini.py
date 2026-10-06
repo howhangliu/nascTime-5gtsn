@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Authors: Afshin Zanganeh and How-Hang Liu (Technical University of Dresden)
 """
 gen_profile_ini.py — Generate per-endpoint app configuration for nascTime
                      heterogeneous traffic scenarios.
