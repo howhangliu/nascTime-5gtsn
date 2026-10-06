@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the standalone uplink QoS demo using only the Python standard library.
 
-Authors: Afshin Zanganeh, How-Hang Liu
+Authors: Afshin Zanganeh and How-Hang Liu (Technical University of Dresden)
 """
 
 from __future__ import annotations

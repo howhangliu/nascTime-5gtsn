@@ -1,8 +1,8 @@
 //
 //                  nascTime
 //
-// Authors: Mohamed Seliem (University College Cork), Afshin Zanganeh,
-//          How-Hang Liu
+// Authors: Mohamed Seliem (University College Cork), Afshin Zanganeh and How-Hang Liu
+//          (Technical University of Dresden)
 //
 // This file is part of a software released under the license included in file
 // "LICENSE.txt". Please read LICENSE.txt and README files before using it.

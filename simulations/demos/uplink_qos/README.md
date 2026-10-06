@@ -1,6 +1,6 @@
 # Uplink QoS demo
 
-Authors: Afshin Zanganeh, How-Hang Liu
+Authors: Afshin Zanganeh and How-Hang Liu (Technical University of Dresden)
 
 ## Implementation
 
